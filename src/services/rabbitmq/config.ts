@@ -48,7 +48,10 @@ export interface ResolvedRabbitMQClientConfig {
 }
 
 export function resolveConfig(options?: RabbitMQClientOptions): ResolvedRabbitMQClientConfig {
-  const rawBaseUrl = options?.baseUrl ?? 'http://localhost:15672';
+  let rawBaseUrl = options?.baseUrl ?? (typeof window !== 'undefined' ? '' : 'http://localhost:15672');
+  if (typeof window !== 'undefined' && (rawBaseUrl === 'http://localhost:15672' || rawBaseUrl === 'http://127.0.0.1:15672')) {
+    rawBaseUrl = '';
+  }
   // Remove trailing slashes
   const baseUrl = rawBaseUrl.replace(/\/+$/, '');
 

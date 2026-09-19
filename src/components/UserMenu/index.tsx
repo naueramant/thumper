@@ -40,13 +40,10 @@ export function UserMenu() {
       }
     >
       {/* Header Info */}
-      <div className="px-3 py-2">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex flex-col min-w-0">
-            <span className="font-semibold text-foreground text-xs truncate">{user.username}</span>
-            <span className="text-[11px] text-muted-foreground">RabbitMQ User</span>
-          </div>
-          <span className="shrink-0 text-[10px] font-mono text-primary bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded font-medium capitalize">
+      <div className="px-3 py-2.5">
+        <div className="flex flex-col items-start gap-2.5">
+          <span className="font-semibold text-foreground text-xs">{user.username}</span>
+          <span className="text-[10px] font-mono text-primary bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded font-medium capitalize">
             {user.tags[0] || 'admin'}
           </span>
         </div>
@@ -117,4 +114,3 @@ export function UserMenu() {
   )
 }
 
-export default UserMenu

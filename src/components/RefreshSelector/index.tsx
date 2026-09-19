@@ -32,4 +32,3 @@ export function RefreshSelector() {
   )
 }
 
-export default RefreshSelector

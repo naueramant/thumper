@@ -20,6 +20,8 @@ export interface Vhost {
   send_oct_details?: RateDetail;
 }
 
+export type VirtualHost = Vhost;
+
 export interface CreateVhostRequest {
   description?: string;
   tags?: string | string[];

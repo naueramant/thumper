@@ -1,65 +1,106 @@
-import { useState, useEffect } from 'react'
+import {
+	createRabbitMQClient,
+	type RabbitMQClient,
+} from "@/services/rabbitmq/index.ts";
+import { useEffect, useState } from "react";
 
 export interface UserProfile {
-  username: string
-  tags: string[]
-  clusterUrl?: string
-  loggedInAt: string
+	username: string;
+	password?: string;
+	token?: string;
+	tags: string[];
+	clusterUrl?: string;
+	loggedInAt: string;
 }
 
-const AUTH_KEY = 'rabbitdash-auth'
+const AUTH_KEY = "rabbitdash-auth";
 
-const DEFAULT_USER: UserProfile = {
-  username: 'guest',
-  tags: ['administrator'],
-  clusterUrl: 'http://localhost:15672',
-  loggedInAt: new Date().toISOString(),
+export function getStoredAuth(): UserProfile | null {
+	if (typeof window === "undefined") return null;
+	const stored = localStorage.getItem(AUTH_KEY);
+	if (!stored) return null;
+	try {
+		return JSON.parse(stored) as UserProfile;
+	} catch {
+		// Corrupt entry; treat as logged out rather than silently faking a session.
+		localStorage.removeItem(AUTH_KEY);
+		return null;
+	}
+}
+
+/** Clears the persisted session and the cached API client. Used by both an
+ * explicit logout and by the global 401/session-expired handler. */
+export function clearSession() {
+	if (typeof window !== "undefined") {
+		localStorage.removeItem(AUTH_KEY);
+	}
+	cachedClient = null;
+	cachedAuthKey = "";
+}
+
+let cachedClient: RabbitMQClient | null = null;
+let cachedAuthKey = "";
+
+export function getRabbitMQClient(): RabbitMQClient {
+	const auth = getStoredAuth();
+	const key = `${auth?.username ?? ""}:${auth?.password ?? ""}:${auth?.token ?? ""}:${auth?.clusterUrl ?? ""}`;
+
+	if (!cachedClient || cachedAuthKey !== key) {
+		cachedAuthKey = key;
+		cachedClient = createRabbitMQClient({
+			baseUrl: auth?.clusterUrl,
+			username: auth?.username || "guest",
+			password: auth?.password || "guest",
+			token: auth?.token,
+		});
+	}
+
+	return cachedClient;
 }
 
 export function useAuth() {
-  const [user, setUser] = useState<UserProfile | null>(() => {
-    if (typeof window === 'undefined') return DEFAULT_USER
-    const stored = localStorage.getItem(AUTH_KEY)
-    if (stored) {
-      try {
-        return JSON.parse(stored) as UserProfile
-      } catch {
-        return DEFAULT_USER
-      }
-    }
-    return DEFAULT_USER
-  })
+	const [user, setUser] = useState<UserProfile | null>(() => getStoredAuth());
 
-  useEffect(() => {
-    if (user) {
-      localStorage.setItem(AUTH_KEY, JSON.stringify(user))
-    } else {
-      localStorage.removeItem(AUTH_KEY)
-    }
-  }, [user])
+	useEffect(() => {
+		if (user) {
+			localStorage.setItem(AUTH_KEY, JSON.stringify(user));
+		} else {
+			localStorage.removeItem(AUTH_KEY);
+		}
+		cachedClient = null;
+	}, [user]);
 
-  const login = (username: string, _password?: string, clusterUrl?: string) => {
-    const profile: UserProfile = {
-      username,
-      tags: username === 'guest' ? ['administrator'] : ['management'],
-      clusterUrl: clusterUrl || 'http://localhost:15672',
-      loggedInAt: new Date().toISOString(),
-    }
-    setUser(profile)
-    return profile
-  }
+	const login = (
+		username: string,
+		password?: string,
+		clusterUrl?: string,
+		tags: string[] = ["administrator"],
+		token?: string,
+	) => {
+		const profile: UserProfile = {
+			username,
+			password,
+			token,
+			tags,
+			clusterUrl: clusterUrl || "http://localhost:15672",
+			loggedInAt: new Date().toISOString(),
+		};
+		setUser(profile);
+		cachedClient = null;
+		return profile;
+	};
 
-  const logout = () => {
-    setUser(null)
-    localStorage.removeItem(AUTH_KEY)
-  }
+	const logout = () => {
+		setUser(null);
+		localStorage.removeItem(AUTH_KEY);
+		cachedClient = null;
+	};
 
-  return {
-    user,
-    isAuthenticated: !!user,
-    login,
-    logout,
-  }
+	return {
+		user,
+		isAuthenticated: !!user,
+		login,
+		logout,
+	};
 }
 
-export default useAuth

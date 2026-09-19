@@ -109,11 +109,15 @@ export class QueuesApi {
     name: string,
     options: GetMessagesRequest
   ): Promise<QueueMessage[]> {
+    const payload = {
+      ...options,
+      ackmode: options.ackmode || options.ack_mode || 'ack_requeue_true',
+    };
     return this.client.request<QueueMessage[]>(
       `/api/queues/${encodeVhost(vhost)}/${encodeName(name)}/get`,
       {
         method: 'POST',
-        body: options,
+        body: payload,
       }
     );
   }

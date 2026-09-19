@@ -1,148 +1,905 @@
-import { useQuery } from '@tanstack/react-query'
-import type { RabbitClusterOverview, RabbitQueue, RabbitConnection } from '@/models/rabbitmq/index.ts'
+import { getRabbitMQClient } from "@/hooks/useAuth/index.ts";
+import { useRefreshInterval } from "@/hooks/useRefreshInterval/index.ts";
+import type {
+	Binding,
+	CreateBindingRequest,
+} from "@/services/rabbitmq/types/binding.ts";
+import type { Channel } from "@/services/rabbitmq/types/channel.ts";
+import type { Connection } from "@/services/rabbitmq/types/connection.ts";
+import type { Consumer } from "@/services/rabbitmq/types/consumer.ts";
+import type {
+	CreateExchangeRequest,
+	Exchange,
+	PublishMessageRequest,
+	PublishMessageResponse,
+} from "@/services/rabbitmq/types/exchange.ts";
+import type { Node as RabbitNode } from "@/services/rabbitmq/types/node.ts";
+import type { RabbitMQOverview } from "@/services/rabbitmq/types/overview.ts";
+import type {
+	Permission,
+	TopicPermission,
+} from "@/services/rabbitmq/types/permissions.ts";
+import type {
+	CreatePolicyRequest,
+	OperatorPolicy,
+	Policy,
+} from "@/services/rabbitmq/types/policy.ts";
+import type {
+	CreateQueueRequest,
+	GetMessagesRequest,
+	Queue,
+	QueueMessage,
+} from "@/services/rabbitmq/types/queue.ts";
+import type {
+	CreateUserRequest,
+	User,
+} from "@/services/rabbitmq/types/user.ts";
+import type {
+	CreateVhostRequest,
+	VirtualHost,
+} from "@/services/rabbitmq/types/vhost.ts";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-// Mock overview data for development preview if RabbitMQ backend is not yet connected
-const mockOverview: RabbitClusterOverview = {
-  management_version: '3.13.2',
-  rabbitmq_version: '3.13.2',
-  rates_mode: 'basic',
-  cluster_name: 'rabbit@cluster-alpha',
-  erlang_version: '26.2.5',
-  erlang_full_version: 'Erlang/OTP 26 [erts-14.2.5]',
-  node: 'rabbit@node-01',
-  message_stats: {
-    publish: 248192,
-    publish_details: { rate: 1240.5 },
-    deliver_get: 245100,
-    deliver_get_details: { rate: 1198.2 },
-    ack: 243980,
-    ack_details: { rate: 1185.0 },
-  },
-  queue_totals: {
-    messages: 3092,
-    messages_ready: 2840,
-    messages_unacknowledged: 252,
-  },
-  object_totals: {
-    connections: 48,
-    channels: 112,
-    exchanges: 16,
-    queues: 24,
-    consumers: 96,
-  },
+export interface FeatureFlag {
+	name: string;
+	state: "enabled" | "disabled" | "unsupported";
+	desc?: string;
+	doc_url?: string;
 }
 
-const mockQueues: RabbitQueue[] = [
-  {
-    name: 'orders.checkout',
-    vhost: '/',
-    type: 'quorum',
-    durable: true,
-    auto_delete: false,
-    exclusive: false,
-    state: 'running',
-    messages: 1420,
-    messages_ready: 1380,
-    messages_unacknowledged: 40,
-    consumers: 12,
-    memory: 14285760,
-    node: 'rabbit@node-01',
-    arguments: { 'x-queue-type': 'quorum' },
-    message_stats: {
-      publish_details: { rate: 450.2 },
-      deliver_get_details: { rate: 448.0 },
-    },
-  },
-  {
-    name: 'payments.notifications',
-    vhost: '/',
-    type: 'classic',
-    durable: true,
-    auto_delete: false,
-    exclusive: false,
-    state: 'running',
-    messages: 45,
-    messages_ready: 40,
-    messages_unacknowledged: 5,
-    consumers: 6,
-    memory: 4194304,
-    node: 'rabbit@node-02',
-    arguments: {},
-    message_stats: {
-      publish_details: { rate: 85.0 },
-      deliver_get_details: { rate: 85.0 },
-    },
-  },
-  {
-    name: 'telemetry.events.stream',
-    vhost: '/',
-    type: 'stream',
-    durable: true,
-    auto_delete: false,
-    exclusive: false,
-    state: 'running',
-    messages: 12500,
-    messages_ready: 12500,
-    messages_unacknowledged: 0,
-    consumers: 18,
-    memory: 52428800,
-    node: 'rabbit@node-01',
-    arguments: { 'x-queue-type': 'stream', 'x-max-length-bytes': 1073741824 },
-    message_stats: {
-      publish_details: { rate: 2100.8 },
-      deliver_get_details: { rate: 2095.4 },
-    },
-  },
-  {
-    name: 'dead-letter.failed-jobs',
-    vhost: '/',
-    type: 'classic',
-    durable: true,
-    auto_delete: false,
-    exclusive: false,
-    state: 'idle',
-    messages: 12,
-    messages_ready: 12,
-    messages_unacknowledged: 0,
-    consumers: 2,
-    memory: 2097152,
-    node: 'rabbit@node-03',
-    arguments: {},
-    message_stats: {
-      publish_details: { rate: 0.2 },
-      deliver_get_details: { rate: 0.0 },
-    },
-  },
-]
+export interface VHostLimit {
+	vhost: string;
+	value: {
+		"max-connections"?: number;
+		"max-queues"?: number;
+	};
+}
+
+export interface UserLimit {
+	user: string;
+	value: {
+		"max-connections"?: number;
+		"max-channels"?: number;
+	};
+}
+
+export interface ShovelItem {
+	vhost: string;
+	name: string;
+	component: string;
+	value: {
+		"src-uri": string;
+		"src-queue"?: string;
+		"src-exchange"?: string;
+		"dest-uri": string;
+		"dest-queue"?: string;
+		"dest-exchange"?: string;
+		"prefetch-count"?: number;
+		"reconnect-delay"?: number;
+		"ack-mode"?: string;
+	};
+}
+
+// Fallback mock overview if RabbitMQ is offline
+const fallbackOverview: RabbitMQOverview = {
+	management_version: "4.3.6",
+	rabbitmq_version: "4.3.6",
+	rates_mode: "basic",
+	cluster_name: "rabbit@local-cluster",
+	erlang_version: "27.3.4.17",
+	erlang_full_version: "Erlang/OTP 27 [erts-15.2.7.13]",
+	node: "rabbit@local-cluster",
+	message_stats: {
+		publish: 248192,
+		publish_details: { rate: 1240.5 },
+		deliver_get: 245100,
+		deliver_get_details: { rate: 1198.2 },
+		ack: 243980,
+		ack_details: { rate: 1185.0 },
+	},
+	queue_totals: {
+		messages: 3092,
+		messages_ready: 2840,
+		messages_unacknowledged: 252,
+	},
+	object_totals: {
+		connections: 4,
+		channels: 12,
+		exchanges: 8,
+		queues: 6,
+		consumers: 18,
+	},
+	listeners: [
+		{
+			node: "rabbit@local-cluster",
+			protocol: "amqp",
+			ip_address: "::",
+			port: 5672,
+		},
+		{
+			node: "rabbit@local-cluster",
+			protocol: "http",
+			ip_address: "::",
+			port: 15672,
+		},
+		{
+			node: "rabbit@local-cluster",
+			protocol: "clustering",
+			ip_address: "::",
+			port: 25672,
+		},
+	],
+	contexts: [
+		{
+			node: "rabbit@local-cluster",
+			description: "RabbitMQ Management",
+			path: "/",
+			port: 15672,
+		},
+	],
+};
 
 export function useRabbitOverview() {
-  return useQuery({
-    queryKey: ['rabbit', 'overview'],
-    queryFn: async () => {
-      // Future integration with RabbitMQClient
-      return mockOverview
-    },
-    refetchInterval: 5000,
-  })
+	const { intervalMs } = useRefreshInterval();
+
+	return useQuery({
+		queryKey: ["rabbit", "overview"],
+		queryFn: async () => {
+			try {
+				const client = getRabbitMQClient();
+				return await client.overview.getOverview();
+			} catch (err) {
+				console.warn("RabbitMQ API unavailable, using fallback overview:", err);
+				return fallbackOverview;
+			}
+		},
+		refetchInterval: intervalMs === 0 ? false : intervalMs,
+	});
 }
 
-export function useRabbitQueues() {
-  return useQuery({
-    queryKey: ['rabbit', 'queues'],
-    queryFn: async () => {
-      return mockQueues
-    },
-    refetchInterval: 5000,
-  })
+export function useRabbitNodes() {
+	const { intervalMs } = useRefreshInterval();
+
+	return useQuery<RabbitNode[]>({
+		queryKey: ["rabbit", "nodes"],
+		queryFn: async () => {
+			try {
+				const client = getRabbitMQClient();
+				const nodes = await client.nodes.getNodes();
+				return Array.isArray(nodes) ? nodes : [];
+			} catch {
+				return [];
+			}
+		},
+		refetchInterval: intervalMs === 0 ? false : intervalMs,
+	});
 }
 
-export function useRabbitConnections() {
-  return useQuery({
-    queryKey: ['rabbit', 'connections'],
-    queryFn: async () => {
-      const connections: RabbitConnection[] = []
-      return connections
-    },
-    refetchInterval: 5000,
-  })
+export function useRabbitQueues(vhost?: string) {
+	const { intervalMs } = useRefreshInterval();
+
+	return useQuery<Queue[]>({
+		queryKey: ["rabbit", "queues", vhost],
+		queryFn: async () => {
+			try {
+				const client = getRabbitMQClient();
+				let res: Queue[] | { items: Queue[] };
+				if (vhost && vhost !== "all") {
+					res = await client.queues.getQueuesByVhost(vhost);
+				} else {
+					res = await client.queues.getQueues();
+				}
+				return Array.isArray(res) ? res : res.items || [];
+			} catch (err) {
+				console.warn("Failed to fetch queues:", err);
+				return [];
+			}
+		},
+		refetchInterval: intervalMs === 0 ? false : intervalMs,
+	});
+}
+
+export function useRabbitQueueDetail(vhost: string, name: string) {
+	const { intervalMs } = useRefreshInterval();
+
+	return useQuery<Queue | null>({
+		queryKey: ["rabbit", "queue", vhost, name],
+		queryFn: async () => {
+			if (!vhost || !name) return null;
+			const client = getRabbitMQClient();
+			return await client.queues.getQueue(vhost, name);
+		},
+		enabled: Boolean(vhost && name),
+		refetchInterval: intervalMs === 0 ? false : intervalMs,
+	});
+}
+
+export function useRabbitQueueBindings(vhost: string, name: string) {
+	return useQuery<Binding[]>({
+		queryKey: ["rabbit", "queue-bindings", vhost, name],
+		queryFn: async () => {
+			if (!vhost || !name) return [];
+			const client = getRabbitMQClient();
+			return await client.queues.getBindings(vhost, name);
+		},
+		enabled: Boolean(vhost && name),
+	});
+}
+
+export function useRabbitExchanges(vhost?: string) {
+	const { intervalMs } = useRefreshInterval();
+
+	return useQuery<Exchange[]>({
+		queryKey: ["rabbit", "exchanges", vhost],
+		queryFn: async () => {
+			try {
+				const client = getRabbitMQClient();
+				let res: Exchange[] | { items: Exchange[] };
+				if (vhost && vhost !== "all") {
+					res = await client.exchanges.getExchangesByVhost(vhost);
+				} else {
+					res = await client.exchanges.getExchanges();
+				}
+				return Array.isArray(res) ? res : res.items || [];
+			} catch (err) {
+				console.warn("Failed to fetch exchanges:", err);
+				return [];
+			}
+		},
+		refetchInterval: intervalMs === 0 ? false : intervalMs,
+	});
+}
+
+export function useRabbitExchangeDetail(vhost: string, name: string) {
+	const { intervalMs } = useRefreshInterval();
+
+	return useQuery<Exchange | null>({
+		queryKey: ["rabbit", "exchange", vhost, name],
+		queryFn: async () => {
+			if (!vhost || !name) return null;
+			const client = getRabbitMQClient();
+			return await client.exchanges.getExchange(vhost, name);
+		},
+		enabled: Boolean(vhost && name),
+		refetchInterval: intervalMs === 0 ? false : intervalMs,
+	});
+}
+
+export function useRabbitExchangeBindings(vhost: string, name: string) {
+	return useQuery<{ inbound: Binding[]; outbound: Binding[] }>({
+		queryKey: ["rabbit", "exchange-bindings", vhost, name],
+		queryFn: async () => {
+			if (!vhost || !name) return { inbound: [], outbound: [] };
+			const client = getRabbitMQClient();
+			const [inbound, outbound] = await Promise.all([
+				client.exchanges.getBindingsAsDestination(vhost, name).catch(() => []),
+				client.exchanges.getBindingsAsSource(vhost, name).catch(() => []),
+			]);
+			return { inbound, outbound };
+		},
+		enabled: Boolean(vhost && name),
+	});
+}
+
+export function useRabbitBindings(vhost?: string) {
+	const { intervalMs } = useRefreshInterval();
+
+	return useQuery<Binding[]>({
+		queryKey: ["rabbit", "all-bindings", vhost],
+		queryFn: async () => {
+			try {
+				const client = getRabbitMQClient();
+				if (vhost && vhost !== "all") {
+					return await client.bindings.getBindingsByVhost(vhost);
+				}
+				return await client.bindings.getBindings();
+			} catch (err) {
+				console.warn("Failed to fetch bindings:", err);
+				return [];
+			}
+		},
+		refetchInterval: intervalMs === 0 ? false : intervalMs,
+	});
+}
+
+export function useRabbitConnections(vhost?: string) {
+	const { intervalMs } = useRefreshInterval();
+
+	return useQuery<Connection[]>({
+		queryKey: ["rabbit", "connections", vhost],
+		queryFn: async () => {
+			try {
+				const client = getRabbitMQClient();
+				let res: Connection[] | { items: Connection[] };
+				if (vhost && vhost !== "all") {
+					res = await client.connections.getConnectionsByVhost(vhost);
+				} else {
+					res = await client.connections.getConnections();
+				}
+				return Array.isArray(res) ? res : res.items || [];
+			} catch (err) {
+				console.warn("Failed to fetch connections:", err);
+				return [];
+			}
+		},
+		refetchInterval: intervalMs === 0 ? false : intervalMs,
+	});
+}
+
+export function useRabbitChannels(vhost?: string) {
+	const { intervalMs } = useRefreshInterval();
+
+	return useQuery<Channel[]>({
+		queryKey: ["rabbit", "channels", vhost],
+		queryFn: async () => {
+			try {
+				const client = getRabbitMQClient();
+				let res: Channel[] | { items: Channel[] };
+				if (vhost && vhost !== "all") {
+					res = await client.channels.getChannelsByVhost(vhost);
+				} else {
+					res = await client.channels.getChannels();
+				}
+				return Array.isArray(res) ? res : res.items || [];
+			} catch (err) {
+				console.warn("Failed to fetch channels:", err);
+				return [];
+			}
+		},
+		refetchInterval: intervalMs === 0 ? false : intervalMs,
+	});
+}
+
+export function useRabbitConnectionDetail(name: string) {
+	const { intervalMs } = useRefreshInterval();
+
+	return useQuery<Connection | null>({
+		queryKey: ["rabbit", "connection", name],
+		queryFn: async () => {
+			if (!name) return null;
+			const client = getRabbitMQClient();
+			return await client.connections.getConnection(name);
+		},
+		enabled: Boolean(name),
+		refetchInterval: intervalMs === 0 ? false : intervalMs,
+	});
+}
+
+export function useRabbitConnectionChannels(name: string) {
+	const { intervalMs } = useRefreshInterval();
+
+	return useQuery<Channel[]>({
+		queryKey: ["rabbit", "connection-channels", name],
+		queryFn: async () => {
+			if (!name) return [];
+			try {
+				const client = getRabbitMQClient();
+				return await client.connections.getConnectionChannels(name);
+			} catch (err) {
+				console.warn("Failed to fetch connection channels:", err);
+				return [];
+			}
+		},
+		enabled: Boolean(name),
+		refetchInterval: intervalMs === 0 ? false : intervalMs,
+	});
+}
+
+export function useRabbitChannelDetail(nameOrId: string) {
+	const { intervalMs } = useRefreshInterval();
+
+	return useQuery<Channel | null>({
+		queryKey: ["rabbit", "channel", nameOrId],
+		queryFn: async () => {
+			if (!nameOrId) return null;
+			const client = getRabbitMQClient();
+			return await client.channels.getChannel(nameOrId);
+		},
+		enabled: Boolean(nameOrId),
+		refetchInterval: intervalMs === 0 ? false : intervalMs,
+	});
+}
+
+export function useRabbitConsumers(vhost?: string) {
+	const { intervalMs } = useRefreshInterval();
+
+	return useQuery<Consumer[]>({
+		queryKey: ["rabbit", "consumers", vhost],
+		queryFn: async () => {
+			try {
+				const client = getRabbitMQClient();
+				const list =
+					vhost && vhost !== "all"
+						? await client.consumers.getConsumersByVhost(vhost)
+						: await client.consumers.getConsumers();
+				return Array.isArray(list) ? list : [];
+			} catch (err) {
+				console.warn("Failed to fetch consumers:", err);
+				return [];
+			}
+		},
+		refetchInterval: intervalMs === 0 ? false : intervalMs,
+	});
+}
+
+export function useRabbitUsers() {
+	const { intervalMs } = useRefreshInterval();
+
+	return useQuery<User[]>({
+		queryKey: ["rabbit", "users"],
+		queryFn: async () => {
+			try {
+				const client = getRabbitMQClient();
+				const users = await client.users.getUsers();
+				return Array.isArray(users) ? users : [];
+			} catch {
+				return [];
+			}
+		},
+		refetchInterval: intervalMs === 0 ? false : intervalMs,
+	});
+}
+
+export function useRabbitPermissions() {
+	const { intervalMs } = useRefreshInterval();
+
+	return useQuery<Permission[]>({
+		queryKey: ["rabbit", "permissions"],
+		queryFn: async () => {
+			try {
+				const client = getRabbitMQClient();
+				const permissions = await client.permissions.getPermissions();
+				return Array.isArray(permissions) ? permissions : [];
+			} catch {
+				return [];
+			}
+		},
+		refetchInterval: intervalMs === 0 ? false : intervalMs,
+	});
+}
+
+export function useRabbitTopicPermissions() {
+	const { intervalMs } = useRefreshInterval();
+
+	return useQuery<TopicPermission[]>({
+		queryKey: ["rabbit", "topic-permissions"],
+		queryFn: async () => {
+			try {
+				const client = getRabbitMQClient();
+				const permissions = await client.permissions.getTopicPermissions();
+				return Array.isArray(permissions) ? permissions : [];
+			} catch {
+				return [];
+			}
+		},
+		refetchInterval: intervalMs === 0 ? false : intervalMs,
+	});
+}
+
+export function useRabbitVHosts() {
+	const { intervalMs } = useRefreshInterval();
+
+	return useQuery<VirtualHost[]>({
+		queryKey: ["rabbit", "vhosts"],
+		queryFn: async () => {
+			try {
+				const client = getRabbitMQClient();
+				const list = await client.vhosts.getVhosts();
+				return Array.isArray(list) ? list : [];
+			} catch {
+				return [];
+			}
+		},
+		refetchInterval: intervalMs === 0 ? false : intervalMs,
+	});
+}
+
+export function useRabbitPolicies(vhost?: string) {
+	return useQuery<Policy[]>({
+		queryKey: ["rabbit", "policies", vhost],
+		queryFn: async () => {
+			try {
+				const client = getRabbitMQClient();
+				const policies = await client.policies.getPolicies(
+					vhost && vhost !== "all" ? vhost : undefined,
+				);
+				return Array.isArray(policies) ? policies : [];
+			} catch {
+				return [];
+			}
+		},
+	});
+}
+
+export function useRabbitOperatorPolicies(vhost?: string) {
+	return useQuery<OperatorPolicy[]>({
+		queryKey: ["rabbit", "operator-policies", vhost],
+		queryFn: async () => {
+			try {
+				const client = getRabbitMQClient();
+				const policies = await client.policies.getOperatorPolicies(
+					vhost && vhost !== "all" ? vhost : undefined,
+				);
+				return Array.isArray(policies) ? policies : [];
+			} catch {
+				return [];
+			}
+		},
+	});
+}
+
+export function useRabbitFeatureFlags() {
+	return useQuery<FeatureFlag[]>({
+		queryKey: ["rabbit", "feature-flags"],
+		queryFn: async () => {
+			try {
+				const client = getRabbitMQClient();
+				const flags = await client.request<FeatureFlag[]>("/api/feature-flags");
+				return Array.isArray(flags) ? flags : [];
+			} catch {
+				return [];
+			}
+		},
+	});
+}
+
+export function useRabbitLimits() {
+	return useQuery<{ vhostLimits: VHostLimit[]; userLimits: UserLimit[] }>({
+		queryKey: ["rabbit", "limits"],
+		queryFn: async () => {
+			const client = getRabbitMQClient();
+			const [vhostLimits, userLimits] = await Promise.all([
+				client.request<VHostLimit[]>("/api/vhost-limits").catch(() => []),
+				client.request<UserLimit[]>("/api/user-limits").catch(() => []),
+			]);
+			return {
+				vhostLimits: Array.isArray(vhostLimits) ? vhostLimits : [],
+				userLimits: Array.isArray(userLimits) ? userLimits : [],
+			};
+		},
+	});
+}
+
+export function useRabbitShovels(vhost?: string) {
+	return useQuery<ShovelItem[]>({
+		queryKey: ["rabbit", "shovels", vhost],
+		queryFn: async () => {
+			try {
+				const client = getRabbitMQClient();
+				const path =
+					vhost && vhost !== "all"
+						? `/api/parameters/shovel/${encodeURIComponent(vhost)}`
+						: "/api/parameters/shovel";
+				const items = await client.request<ShovelItem[]>(path).catch(() => []);
+				return Array.isArray(items) ? items : [];
+			} catch {
+				return [];
+			}
+		},
+	});
+}
+
+// ---------------------- MUTATIONS ----------------------
+
+export function useRabbitMutations() {
+	const queryClient = useQueryClient();
+	const client = getRabbitMQClient();
+
+	// Queue mutations
+	const createQueue = useMutation({
+		mutationFn: ({
+			vhost,
+			name,
+			data,
+		}: {
+			vhost: string;
+			name: string;
+			data: CreateQueueRequest;
+		}) => client.queues.createQueue(vhost, name, data),
+		onSuccess: () =>
+			queryClient.invalidateQueries({ queryKey: ["rabbit", "queues"] }),
+	});
+
+	const deleteQueue = useMutation({
+		mutationFn: ({ vhost, name }: { vhost: string; name: string }) =>
+			client.queues.deleteQueue(vhost, name),
+		onSuccess: () =>
+			queryClient.invalidateQueries({ queryKey: ["rabbit", "queues"] }),
+	});
+
+	const purgeQueue = useMutation({
+		mutationFn: ({ vhost, name }: { vhost: string; name: string }) =>
+			client.queues.purgeQueue(vhost, name),
+		onSuccess: () =>
+			queryClient.invalidateQueries({ queryKey: ["rabbit", "queues"] }),
+	});
+
+	const getQueueMessages = useMutation({
+		mutationFn: ({
+			vhost,
+			name,
+			options,
+		}: {
+			vhost: string;
+			name: string;
+			options: GetMessagesRequest;
+		}): Promise<QueueMessage[]> =>
+			client.queues.getMessages(vhost, name, options),
+	});
+
+	// Exchange mutations
+	const createExchange = useMutation({
+		mutationFn: ({
+			vhost,
+			name,
+			data,
+		}: {
+			vhost: string;
+			name: string;
+			data: CreateExchangeRequest;
+		}) => client.exchanges.createExchange(vhost, name, data),
+		onSuccess: () =>
+			queryClient.invalidateQueries({ queryKey: ["rabbit", "exchanges"] }),
+	});
+
+	const deleteExchange = useMutation({
+		mutationFn: ({ vhost, name }: { vhost: string; name: string }) =>
+			client.exchanges.deleteExchange(vhost, name),
+		onSuccess: () =>
+			queryClient.invalidateQueries({ queryKey: ["rabbit", "exchanges"] }),
+	});
+
+	const publishMessage = useMutation({
+		mutationFn: ({
+			vhost,
+			exchange,
+			data,
+		}: {
+			vhost: string;
+			exchange: string;
+			data: PublishMessageRequest;
+		}): Promise<PublishMessageResponse> =>
+			client.exchanges.publish(vhost, exchange, data),
+	});
+
+	// Binding mutations
+	const createBinding = useMutation({
+		mutationFn: ({
+			vhost,
+			source,
+			destination,
+			destinationType,
+			data,
+		}: {
+			vhost: string;
+			source: string;
+			destination: string;
+			destinationType: "queue" | "exchange";
+			data: CreateBindingRequest;
+		}) => {
+			if (destinationType === "queue") {
+				return client.bindings.createQueueBinding(
+					vhost,
+					source,
+					destination,
+					data,
+				);
+			}
+			return client.bindings.createExchangeBinding(
+				vhost,
+				source,
+				destination,
+				data,
+			);
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["rabbit", "queue-bindings"] });
+			queryClient.invalidateQueries({
+				queryKey: ["rabbit", "exchange-bindings"],
+			});
+		},
+	});
+
+	const deleteBinding = useMutation({
+		mutationFn: ({
+			vhost,
+			source,
+			destination,
+			destinationType,
+			propertiesKey,
+		}: {
+			vhost: string;
+			source: string;
+			destination: string;
+			destinationType: "queue" | "exchange";
+			propertiesKey: string;
+		}) => {
+			if (destinationType === "queue") {
+				return client.bindings.deleteQueueBinding(
+					vhost,
+					source,
+					destination,
+					propertiesKey,
+				);
+			}
+			return client.bindings.deleteExchangeBinding(
+				vhost,
+				source,
+				destination,
+				propertiesKey,
+			);
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["rabbit", "queue-bindings"] });
+			queryClient.invalidateQueries({
+				queryKey: ["rabbit", "exchange-bindings"],
+			});
+		},
+	});
+
+	// Connection mutations
+	const closeConnection = useMutation({
+		mutationFn: ({ name, reason }: { name: string; reason?: string }) =>
+			client.connections.closeConnection(name, reason),
+		onSuccess: () =>
+			queryClient.invalidateQueries({ queryKey: ["rabbit", "connections"] }),
+	});
+
+	// User mutations
+	const createUser = useMutation({
+		mutationFn: ({ name, data }: { name: string; data: CreateUserRequest }) =>
+			client.users.createUser(name, data),
+		onSuccess: () =>
+			queryClient.invalidateQueries({ queryKey: ["rabbit", "users"] }),
+	});
+
+	const deleteUser = useMutation({
+		mutationFn: (name: string) => client.users.deleteUser(name),
+		onSuccess: () =>
+			queryClient.invalidateQueries({ queryKey: ["rabbit", "users"] }),
+	});
+
+	const setUserPermissions = useMutation({
+		mutationFn: ({
+			vhost,
+			user,
+			permissions,
+		}: {
+			vhost: string;
+			user: string;
+			permissions: { configure: string; write: string; read: string };
+		}) => client.permissions.setPermission(vhost, user, permissions),
+		onSuccess: () =>
+			queryClient.invalidateQueries({ queryKey: ["rabbit", "permissions"] }),
+	});
+
+	const clearUserPermissions = useMutation({
+		mutationFn: ({ vhost, user }: { vhost: string; user: string }) =>
+			client.permissions.deletePermission(vhost, user),
+		onSuccess: () =>
+			queryClient.invalidateQueries({ queryKey: ["rabbit", "permissions"] }),
+	});
+
+	const setUserTopicPermission = useMutation({
+		mutationFn: ({
+			vhost,
+			user,
+			exchange,
+			write,
+			read,
+		}: {
+			vhost: string;
+			user: string;
+			exchange: string;
+			write: string;
+			read: string;
+		}) =>
+			client.permissions.setTopicPermission(vhost, user, {
+				exchange,
+				write,
+				read,
+			}),
+		onSuccess: () =>
+			queryClient.invalidateQueries({
+				queryKey: ["rabbit", "topic-permissions"],
+			}),
+	});
+
+	const clearUserTopicPermission = useMutation({
+		mutationFn: ({ vhost, user }: { vhost: string; user: string }) =>
+			client.permissions.deleteTopicPermission(vhost, user),
+		onSuccess: () =>
+			queryClient.invalidateQueries({
+				queryKey: ["rabbit", "topic-permissions"],
+			}),
+	});
+
+	const updateUser = useMutation({
+		mutationFn: ({ name, data }: { name: string; data: CreateUserRequest }) =>
+			client.users.createUser(name, data),
+		onSuccess: () =>
+			queryClient.invalidateQueries({ queryKey: ["rabbit", "users"] }),
+	});
+
+	// VHost mutations
+	const createVHost = useMutation({
+		mutationFn: ({ name, data }: { name: string; data: CreateVhostRequest }) =>
+			client.vhosts.createVhost(name, data),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["rabbit", "vhosts"] });
+		},
+	});
+
+	const deleteVHost = useMutation({
+		mutationFn: (name: string) => client.vhosts.deleteVhost(name),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["rabbit", "vhosts"] });
+		},
+	});
+
+	// Policy mutations
+	const createPolicy = useMutation({
+		mutationFn: ({
+			vhost,
+			name,
+			data,
+		}: {
+			vhost: string;
+			name: string;
+			data: CreatePolicyRequest;
+		}) => client.policies.setPolicy(vhost, name, data),
+		onSuccess: () =>
+			queryClient.invalidateQueries({ queryKey: ["rabbit", "policies"] }),
+	});
+
+	const deletePolicy = useMutation({
+		mutationFn: ({ vhost, name }: { vhost: string; name: string }) =>
+			client.policies.deletePolicy(vhost, name),
+		onSuccess: () =>
+			queryClient.invalidateQueries({ queryKey: ["rabbit", "policies"] }),
+	});
+
+	// Feature flag mutation
+	const enableFeatureFlag = useMutation({
+		mutationFn: (name: string) =>
+			client.request<void>(
+				`/api/feature-flags/${encodeURIComponent(name)}/enable`,
+				{ method: "PUT" },
+			),
+		onSuccess: () =>
+			queryClient.invalidateQueries({ queryKey: ["rabbit", "feature-flags"] }),
+	});
+
+	// Cluster rename
+	const setClusterName = useMutation({
+		mutationFn: (name: string) => client.overview.setClusterName(name),
+		onSuccess: () =>
+			queryClient.invalidateQueries({ queryKey: ["rabbit", "overview"] }),
+	});
+
+	return {
+		createQueue,
+		deleteQueue,
+		purgeQueue,
+		getQueueMessages,
+		createExchange,
+		deleteExchange,
+		publishMessage,
+		createBinding,
+		deleteBinding,
+		closeConnection,
+		createUser,
+		deleteUser,
+		updateUser,
+		setUserPermissions,
+		clearUserPermissions,
+		setUserTopicPermission,
+		clearUserTopicPermission,
+		createVHost,
+		deleteVHost,
+		createPolicy,
+		deletePolicy,
+		enableFeatureFlag,
+		setClusterName,
+	};
 }

@@ -41,6 +41,10 @@ export interface MessageStats {
   confirm_details?: RateDetail;
   drop_unroutable?: number;
   drop_unroutable_details?: RateDetail;
+  publish_in?: number;
+  publish_in_details?: RateDetail;
+  publish_out?: number;
+  publish_out_details?: RateDetail;
 }
 
 export interface ListQueryOptions {

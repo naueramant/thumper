@@ -62,4 +62,3 @@ export function useTheme() {
   return { theme, resolvedTheme, setTheme, toggleTheme }
 }
 
-export default useTheme

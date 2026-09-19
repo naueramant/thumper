@@ -1,0 +1,13 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "project": ["src/**/*.{ts,tsx}"],
+  "ignoreIssues": {
+    "src/services/rabbitmq/types/**": ["exports", "types"],
+    "src/services/rabbitmq/errors.ts": ["exports"],
+    "src/services/rabbitmq/index.ts": ["types"],
+    "src/components/ui/**": ["exports", "types"],
+    "src/components/common/TableFilters/index.tsx": ["types"],
+    "src/components/ConfirmDialog/index.tsx": ["types"],
+    "src/components/TopologyFlow/types.ts": ["types"]
+  }
+}

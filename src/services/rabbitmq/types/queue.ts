@@ -54,9 +54,12 @@ export interface CreateQueueRequest {
   node?: string;
 }
 
+export type AckMode = 'ack_requeue_true' | 'ack_requeue_false' | 'reject_requeue_true' | 'reject_requeue_false';
+
 export interface GetMessagesRequest {
   count: number;
-  ack_mode: 'ack_requeue_true' | 'ack_requeue_false' | 'reject_requeue_true' | 'reject_requeue_false';
+  ackmode?: AckMode;
+  ack_mode?: AckMode;
   encoding: 'auto' | 'base64';
   truncate?: number;
 }

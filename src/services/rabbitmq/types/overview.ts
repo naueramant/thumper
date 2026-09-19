@@ -22,6 +22,7 @@ export interface Listener {
   protocol: string;
   ip_address: string;
   port: number;
+  tls?: boolean;
   socket_opts?: Record<string, unknown>;
 }
 

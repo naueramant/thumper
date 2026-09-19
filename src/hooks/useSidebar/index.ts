@@ -21,4 +21,3 @@ export function useSidebar() {
   }
 }
 
-export default useSidebar
