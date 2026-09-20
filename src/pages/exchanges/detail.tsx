@@ -27,8 +27,10 @@ import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import {
 	AlertCircle,
 	AlertTriangle,
+	BookmarkPlus,
 	CheckCircle2,
 	ChevronRight,
+	SendHorizontal,
 	Link as LinkIcon,
 	Network,
 	RefreshCw,
@@ -38,6 +40,8 @@ import {
 	Unlink,
 } from "lucide-react";
 import * as React from "react";
+import { TestCollectionsDrawer } from "@/components/TestCollections/index.ts";
+import { saveTemplateToCollection } from "@/services/testCollections/storage.ts";
 
 type ExchangeTab = "topology" | "publish" | "bindings";
 
@@ -110,6 +114,7 @@ export function ExchangeDetailPage() {
 	const [pubResult, setPubResult] = React.useState<{ routed: boolean } | null>(
 		null,
 	);
+	const [isCollectionsOpen, setIsCollectionsOpen] = React.useState(false);
 
 	// Bind Form State
 	const [destType, setDestType] = React.useState<"queue" | "exchange">("queue");
@@ -337,17 +342,25 @@ export function ExchangeDetailPage() {
 						Refresh
 					</Button>
 
-					{!isSystemExchange && (
+					<span
+						title={
+							isSystemExchange
+								? "System exchanges cannot be deleted"
+								: undefined
+						}
+						className="inline-flex"
+					>
 						<Button
 							variant="outline"
 							size="sm"
 							onClick={() => setShowDeleteConfirm(true)}
+							disabled={isSystemExchange}
 							className="h-8 text-xs text-destructive border-destructive/30 hover:bg-destructive/10"
 						>
 							<Trash2 className="h-3.5 w-3.5 mr-1" />
 							Delete Exchange
 						</Button>
-					)}
+					</span>
 				</div>
 			</div>
 
@@ -629,28 +642,67 @@ export function ExchangeDetailPage() {
 									</CardDescription>
 								</div>
 
-								{pubResult && (
-									<Badge
+								<div className="flex items-center gap-2">
+									{pubResult && (
+										<Badge
+											variant="outline"
+											className={`font-mono text-xs ${
+												pubResult.routed
+													? "border-emerald-500/30 text-emerald-400 bg-emerald-500/10"
+													: "border-amber-500/30 text-amber-400 bg-amber-500/10"
+											}`}
+										>
+											{pubResult.routed ? (
+												<>
+													<CheckCircle2 className="h-3 w-3 mr-1" /> Routed to
+													Queue(s)
+												</>
+											) : (
+												<>
+													<AlertCircle className="h-3 w-3 mr-1" /> Unroutable /
+													Dropped
+												</>
+											)}
+										</Badge>
+									)}
+
+									<Button
+										type="button"
 										variant="outline"
-										className={`font-mono text-xs ${
-											pubResult.routed
-												? "border-emerald-500/30 text-emerald-400 bg-emerald-500/10"
-												: "border-amber-500/30 text-amber-400 bg-amber-500/10"
-										}`}
+										size="sm"
+										onClick={() => setIsCollectionsOpen(true)}
+										className="h-7 px-2 text-xs font-mono text-muted-foreground hover:text-foreground cursor-pointer"
+										title="Open Publisher Studio to load saved templates"
 									>
-										{pubResult.routed ? (
-											<>
-												<CheckCircle2 className="h-3 w-3 mr-1" /> Routed to
-												Queue(s)
-											</>
-										) : (
-											<>
-												<AlertCircle className="h-3 w-3 mr-1" /> Unroutable /
-												Dropped
-											</>
-										)}
-									</Badge>
-								)}
+										<SendHorizontal className="h-3 w-3 mr-1 text-primary" />
+										Studio
+									</Button>
+
+									<Button
+										type="button"
+										variant="outline"
+										size="sm"
+										onClick={() => {
+											saveTemplateToCollection("saved-templates", {
+												id: `tpl-${Date.now()}`,
+												name: `${exchangeName} ${pubRoutingKey ? `(${pubRoutingKey})` : "message"}`,
+												targetType: "exchange",
+												targetName: exchangeName,
+												vhost,
+												routingKey: pubRoutingKey,
+												payload: pubPayload,
+												createdAt: Date.now(),
+												updatedAt: Date.now(),
+											});
+											toast.success("Saved to Collections");
+										}}
+										className="h-7 px-2 text-xs font-mono text-muted-foreground hover:text-foreground cursor-pointer"
+										title="Save current payload and routing key to collections"
+									>
+										<BookmarkPlus className="h-3 w-3 mr-1 text-emerald-500" />
+										Save
+									</Button>
+								</div>
 							</div>
 						</CardHeader>
 						<CardContent className="p-4 space-y-3">
@@ -735,6 +787,16 @@ export function ExchangeDetailPage() {
 					</Card>
 				</div>
 			)}
+
+			<TestCollectionsDrawer
+				isOpen={isCollectionsOpen}
+				onClose={() => setIsCollectionsOpen(false)}
+				onLoadTemplate={(tpl) => {
+					setPubPayload(tpl.payload);
+					if (tpl.routingKey) setPubRoutingKey(tpl.routingKey);
+					toast.success(`Loaded template "${tpl.name}"`);
+				}}
+			/>
 		</div>
 	);
 }

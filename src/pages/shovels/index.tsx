@@ -635,7 +635,7 @@ export function ShovelsPage() {
 									<TableHead className="text-right">Forwarded</TableHead>
 									<TableHead className="text-right">Remaining</TableHead>
 									<TableHead>Last Activity</TableHead>
-									<TableHead className="text-right">Actions</TableHead>
+									<TableHead className="text-right" />
 								</TableRow>
 							</TableHeader>
 							<TableBody>
@@ -793,36 +793,51 @@ export function ShovelsPage() {
 													<div className="flex items-center justify-end gap-1">
 														<Button
 															variant="ghost"
-															size="icon"
-															className="h-7 w-7 text-muted-foreground hover:text-foreground"
+															size="sm"
+															className="h-6 text-[11px] px-2 text-primary hover:bg-primary/10"
 															onClick={() => setSelectedStatus(s)}
 															title="Inspect details"
 														>
-															<Eye className="h-3.5 w-3.5" />
+															<Eye className="h-3 w-3 mr-1" />
+															Inspect
 														</Button>
 
-														{s.type === "dynamic" && (
-															<>
-																<Button
-																	variant="ghost"
-																	size="icon"
-																	className="h-7 w-7 text-muted-foreground hover:text-primary"
-																	onClick={() => handleRestart(s.vhost, s.name)}
-																	title="Restart shovel"
-																>
-																	<RotateCw className="h-3.5 w-3.5" />
-																</Button>
-																<Button
-																	variant="ghost"
-																	size="icon"
-																	className="h-7 w-7 text-muted-foreground hover:text-destructive"
-																	onClick={() => handleDelete(s.vhost, s.name)}
-																	title="Delete shovel"
-																>
-																	<Trash2 className="h-3.5 w-3.5" />
-																</Button>
-															</>
-														)}
+														<span
+															title={
+																s.type !== "dynamic"
+																	? "Static shovels cannot be restarted dynamically"
+																	: "Restart shovel"
+															}
+															className="inline-flex"
+														>
+															<Button
+																variant="ghost"
+																size="sm"
+																className="h-6 w-6 p-0 text-primary hover:bg-primary/10"
+																onClick={() => handleRestart(s.vhost, s.name)}
+																disabled={s.type !== "dynamic"}
+															>
+																<RotateCw className="h-3 w-3" />
+															</Button>
+														</span>
+														<span
+															title={
+																s.type !== "dynamic"
+																	? "Static shovels cannot be deleted dynamically"
+																	: "Delete shovel"
+															}
+															className="inline-flex"
+														>
+															<Button
+																variant="ghost"
+																size="sm"
+																className="h-6 w-6 p-0 text-destructive hover:bg-destructive/10"
+																onClick={() => handleDelete(s.vhost, s.name)}
+																disabled={s.type !== "dynamic"}
+															>
+																<Trash2 className="h-3 w-3" />
+															</Button>
+														</span>
 													</div>
 												</TableCell>
 											</TableRow>
@@ -867,7 +882,7 @@ export function ShovelsPage() {
 									<TableHead>Prefetch</TableHead>
 									<TableHead>Ack Mode</TableHead>
 									<TableHead>Auto-Delete</TableHead>
-									<TableHead className="text-right">Actions</TableHead>
+									<TableHead className="text-right" />
 								</TableRow>
 							</TableHeader>
 							<TableBody>
@@ -932,21 +947,21 @@ export function ShovelsPage() {
 													<div className="flex items-center justify-end gap-1">
 														<Button
 															variant="ghost"
-															size="icon"
-															className="h-7 w-7 text-muted-foreground hover:text-primary"
+															size="sm"
+															className="h-6 w-6 p-0 text-primary hover:bg-primary/10"
 															onClick={() => handleRestart(s.vhost, s.name)}
 															title="Restart shovel"
 														>
-															<RotateCw className="h-3.5 w-3.5" />
+															<RotateCw className="h-3 w-3" />
 														</Button>
 														<Button
 															variant="ghost"
-															size="icon"
-															className="h-7 w-7 text-muted-foreground hover:text-destructive"
+															size="sm"
+															className="h-6 w-6 p-0 text-destructive hover:bg-destructive/10"
 															onClick={() => handleDelete(s.vhost, s.name)}
 															title="Delete shovel"
 														>
-															<Trash2 className="h-3.5 w-3.5" />
+															<Trash2 className="h-3 w-3" />
 														</Button>
 													</div>
 												</TableCell>

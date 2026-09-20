@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   Server,
   Shovel,
+  SendHorizontal,
   X,
 } from 'lucide-react'
 import { useRabbitQueues, useRabbitExchanges, useRabbitOverview, useRabbitShovelPlugin } from '@/hooks/useRabbitMQ/index.ts'
@@ -18,9 +19,10 @@ import { useVHost } from '@/hooks/useVHost/index.ts'
 interface CommandPaletteProps {
   isOpen: boolean
   onClose: () => void
+  onOpenCollections?: () => void
 }
 
-export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
+export function CommandPalette({ isOpen, onClose, onOpenCollections }: CommandPaletteProps) {
   const navigate = useNavigate()
   const [query, setQuery] = React.useState('')
   const [activeIndex, setActiveIndex] = React.useState(0)
@@ -81,6 +83,9 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       ? [{ label: 'Shovels', to: '/shovels', icon: Shovel, category: 'Navigation' }]
       : []),
     { label: 'Administration Hub', to: '/admin', icon: ShieldCheck, category: 'Navigation' },
+    ...(onOpenCollections
+      ? [{ label: 'Publisher Studio', to: '#collections', action: onOpenCollections, icon: SendHorizontal, category: 'Tools' }]
+      : []),
   ]
 
   const filteredNav = navItems.filter((i) => i.label.toLowerCase().includes(cleanQuery))
@@ -107,7 +112,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
   const flatItems: FlatItem[] = [
     ...filteredNav.map((item) => ({
       key: `nav:${item.to}`,
-      action: () => navigate({ to: item.to }),
+      action: () => (item.action ? item.action() : navigate({ to: item.to })),
     })),
     ...filteredQueues.map((q) => ({
       key: `queue:${q.vhost}:${q.name}`,
@@ -203,7 +208,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
                       ref={(el) => { itemRefs.current[idx] = el }}
                       type="button"
                       onMouseEnter={() => setActiveIndex(idx)}
-                      onClick={() => handleSelect(() => navigate({ to: item.to }))}
+                      onClick={() => handleSelect(() => (item.action ? item.action() : navigate({ to: item.to })))}
                       className={`w-full flex items-center justify-between px-2.5 py-2 rounded-md transition-colors text-left group ${
                         active ? 'bg-primary/10 text-primary' : 'hover:bg-primary/10 hover:text-primary'
                       }`}

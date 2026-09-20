@@ -16,15 +16,32 @@ import (
 	"github.com/rabbitdash/simulator/internal/config"
 )
 
-// Dial opens a new AMQP connection tagged with a friendly connection name,
-// so each simulated microservice instance shows up distinctly in the
-// RabbitMQ management UI / rabbitdash Connections page.
-func Dial(cfg config.Config, connectionName string) (*amqp.Connection, error) {
+// Dial opens a new AMQP connection scoped to vhost, tagged with a friendly
+// connection name, so each simulated microservice instance shows up
+// distinctly (and in the right vhost) in the RabbitMQ management UI /
+// rabbitdash Connections page.
+func Dial(cfg config.Config, vhost, connectionName string) (*amqp.Connection, error) {
+	uri, err := amqp.ParseURI(cfg.AMQPURL)
+	if err != nil {
+		return nil, fmt.Errorf("parse AMQP URL: %w", err)
+	}
+	uri.Vhost = vhost
+
 	amqpCfg := amqp.Config{
 		Properties: amqp.NewConnectionProperties(),
 	}
 	amqpCfg.Properties.SetClientConnectionName(connectionName)
-	return amqp.DialConfig(cfg.AMQPURL, amqpCfg)
+	return amqp.DialConfig(uri.String(), amqpCfg)
+}
+
+// ConnName builds a per-vhost connection name, so connections from the same
+// simulated service in different vhosts are still distinguishable on the
+// Connections page. The default vhost keeps the bare name for readability.
+func ConnName(base, vhost string) string {
+	if vhost == "/" || vhost == "" {
+		return base
+	}
+	return base + "@" + vhost
 }
 
 // jitter sleeps for baseDelay scaled by cfg.Scale, plus up to 40% random

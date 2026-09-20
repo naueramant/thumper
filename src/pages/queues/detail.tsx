@@ -43,6 +43,7 @@ import {
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import {
 	AlertTriangle,
+	BookmarkPlus,
 	Check,
 	CheckCircle2,
 	ChevronRight,
@@ -55,15 +56,23 @@ import {
 	Link as LinkIcon,
 	Network,
 	RefreshCw,
+	RotateCcw,
 	Send,
+	SendHorizontal,
 	Shovel,
 	Trash2,
 	Unlink,
 	X,
 } from "lucide-react";
 import * as React from "react";
+import { TestCollectionsDrawer } from "@/components/TestCollections/index.ts";
+import { saveTemplateToCollection } from "@/services/testCollections/storage.ts";
+import { DlqReplayDialog } from "./components/DlqReplayDialog.tsx";
 import { MoveMessagesDialog } from "./components/MoveMessagesDialog.tsx";
 import { StreamDetailView } from "./components/StreamDetailView.tsx";
+import { XDeathBadge } from "./components/XDeathBadge.tsx";
+import { isDlqSink } from "./utils/dlqUtils.ts";
+import { extractXDeathEntries } from "@/services/rabbitmq/types/xdeath.ts";
 
 type QueueTab =
 	| "messages"
@@ -181,6 +190,10 @@ export function QueueDetailPage() {
 	const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
 	const [showMoveMessagesDialog, setShowMoveMessagesDialog] =
 		React.useState(false);
+	const [showDlqReplayDialog, setShowDlqReplayDialog] = React.useState(false);
+	const [singleMessageToReplay, setSingleMessageToReplay] =
+		React.useState<QueueMessage | null>(null);
+	const [isCollectionsOpen, setIsCollectionsOpen] = React.useState(false);
 	const { data: isShovelEnabled = false } = useRabbitShovelPlugin();
 
 	// Auto-fetch messages on mount or when queue updates
@@ -518,6 +531,22 @@ export function QueueDetailPage() {
 								</Button>
 							)}
 
+							{isDlqSink(queue, messages) && (
+								<Button
+									variant="outline"
+									size="sm"
+									onClick={() => {
+										setSingleMessageToReplay(null);
+										setShowDlqReplayDialog(true);
+									}}
+									className="h-8 text-xs text-rose-500 border-rose-500/30 hover:bg-rose-500/10 font-medium"
+									title="Replay dead-lettered messages back to their origin queue or exchange"
+								>
+									<RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+									Replay DLQ
+								</Button>
+							)}
+
 							<Button
 								variant="outline"
 								size="sm"
@@ -539,6 +568,42 @@ export function QueueDetailPage() {
 							</Button>
 						</div>
 					</div>
+
+					{/* DLQ Diagnostics Banner */}
+					{isDlqSink(queue, messages) && (
+						<div className="p-3.5 rounded-xl border border-rose-500/30 bg-rose-500/5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 animate-in fade-in duration-200">
+							<div className="flex items-start gap-3">
+								<div className="p-2 rounded-lg bg-rose-500/10 text-rose-500 border border-rose-500/20 shrink-0">
+									<RotateCcw className="h-4 w-4" />
+								</div>
+								<div>
+									<div className="flex items-center gap-2">
+										<span className="font-semibold text-xs text-rose-500">
+											Dead Letter Queue Detected
+										</span>
+										<Badge variant="outline" className="border-rose-500/30 text-rose-500 text-[10px] font-mono">
+											DLQ Sink
+										</Badge>
+									</div>
+									<p className="text-[11px] text-muted-foreground mt-0.5">
+										This queue collects dead-lettered messages. You can inspect rejection reasons and replay them back to production.
+									</p>
+								</div>
+							</div>
+							<div className="flex items-center gap-2 shrink-0">
+								<Button
+									size="sm"
+									onClick={() => {
+										setSingleMessageToReplay(null);
+										setShowDlqReplayDialog(true);
+									}}
+									className="h-7 text-xs bg-rose-600 hover:bg-rose-700 text-white font-medium cursor-pointer"
+								>
+									<RotateCcw className="h-3 w-3 mr-1" /> Replay Messages
+								</Button>
+							</div>
+						</div>
+					)}
 
 					{/* Top Metric Cards — always visible */}
 					<div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -780,61 +845,86 @@ export function QueueDetailPage() {
 														<TableHead className="text-[11px]">
 															Status
 														</TableHead>
-														<TableHead className="text-right text-[11px]">
-															Actions
-														</TableHead>
+														<TableHead className="text-right text-[11px]" />
 													</TableRow>
 												</TableHeader>
 												<TableBody>
-													{messages.map((msg, idx) => (
-														<TableRow key={idx} className="hover:bg-muted/30">
-															<TableCell className="font-mono text-xs text-muted-foreground">
-																{idx + 1}
-															</TableCell>
-															<TableCell className="max-w-md">
-																<div
-																	onClick={() => setSelectedMessage(msg)}
-																	className="cursor-pointer font-mono text-xs text-foreground/90 bg-muted/40 hover:bg-muted/70 px-2 py-1 rounded border border-border/40 truncate max-w-lg transition-colors flex items-center gap-1.5"
-																	title="Click to inspect full payload"
-																>
-																	{tryParseJson(msg.payload).isJson && (
-																		<span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-1 py-0.5 rounded flex-shrink-0">
-																			JSON
+													{messages.map((msg, idx) => {
+														const hasXDeath = extractXDeathEntries(msg.properties?.headers).length > 0;
+														return (
+															<TableRow key={idx} className="hover:bg-muted/30">
+																<TableCell className="font-mono text-xs text-muted-foreground">
+																	{idx + 1}
+																</TableCell>
+																<TableCell className="max-w-md">
+																	<div
+																		onClick={() => setSelectedMessage(msg)}
+																		className="cursor-pointer font-mono text-xs text-foreground/90 bg-muted/40 hover:bg-muted/70 px-2 py-1 rounded border border-border/40 truncate max-w-lg transition-colors flex items-center gap-1.5"
+																		title="Click to inspect full payload"
+																	>
+																		{tryParseJson(msg.payload).isJson && (
+																			<span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-1 py-0.5 rounded flex-shrink-0">
+																				JSON
+																			</span>
+																		)}
+																		<span className="truncate">
+																			{msg.payload}
 																		</span>
-																	)}
-																	<span className="truncate">
-																		{msg.payload}
-																	</span>
-																</div>
-															</TableCell>
-															<TableCell className="font-mono text-xs text-primary">
-																{msg.routing_key || "-"}
-															</TableCell>
-															<TableCell className="font-mono text-xs text-muted-foreground">
-																{msg.exchange || "(default)"}
-															</TableCell>
-															<TableCell className="font-mono text-xs text-muted-foreground">
-																{formatBytes(msg.payload_bytes)}
-															</TableCell>
-															<TableCell>
-																{msg.redelivered ? (
-																	<Badge
-																		variant="outline"
-																		className="text-[10px] border-amber-500/30 text-amber-500"
-																	>
-																		Redelivered
-																	</Badge>
-																) : (
-																	<Badge
-																		variant="outline"
-																		className="text-[10px] text-muted-foreground"
-																	>
-																		Fresh
-																	</Badge>
-																)}
-															</TableCell>
-															<TableCell className="text-right">
-																<div className="flex items-center justify-end gap-1">
+																	</div>
+																</TableCell>
+																<TableCell className="font-mono text-xs text-primary">
+																	{msg.routing_key || "-"}
+																</TableCell>
+																<TableCell className="font-mono text-xs text-muted-foreground">
+																	{msg.exchange || "(default)"}
+																</TableCell>
+																<TableCell className="font-mono text-xs text-muted-foreground">
+																	{formatBytes(msg.payload_bytes)}
+																</TableCell>
+																<TableCell>
+																	<div className="flex flex-col gap-1 items-start">
+																		{msg.redelivered ? (
+																			<Badge
+																				variant="outline"
+																				className="text-[10px] border-amber-500/30 text-amber-500"
+																			>
+																				Redelivered
+																			</Badge>
+																		) : (
+																			<Badge
+																				variant="outline"
+																				className="text-[10px] text-muted-foreground"
+																			>
+																				Fresh
+																			</Badge>
+																		)}
+																		<XDeathBadge headers={msg.properties?.headers} />
+																	</div>
+																</TableCell>
+																<TableCell className="text-right">
+																	<div className="flex items-center justify-end gap-1">
+																		<span
+																			title={
+																				hasXDeath
+																					? "Replay this dead-lettered message"
+																					: "Only dead-lettered messages can be replayed"
+																			}
+																			className="inline-flex"
+																		>
+																			<Button
+																				variant="ghost"
+																				size="sm"
+																				disabled={!hasXDeath}
+																				onClick={() => {
+																					setSingleMessageToReplay(msg);
+																					setShowDlqReplayDialog(true);
+																				}}
+																				className="h-7 px-2 text-xs text-rose-500 hover:text-rose-600 hover:bg-rose-500/10"
+																			>
+																				<RotateCcw className="h-3.5 w-3.5 mr-1" />
+																				Replay
+																			</Button>
+																		</span>
 																	<Button
 																		variant="ghost"
 																		size="sm"
@@ -873,7 +963,8 @@ export function QueueDetailPage() {
 																</div>
 															</TableCell>
 														</TableRow>
-													))}
+														);
+													})}
 												</TableBody>
 											</Table>
 										</div>
@@ -933,14 +1024,53 @@ export function QueueDetailPage() {
 												default direct exchange.
 											</CardDescription>
 										</div>
-										{pubSuccess && (
-											<Badge
+										<div className="flex items-center gap-2">
+											{pubSuccess && (
+												<Badge
+													variant="outline"
+													className="border-emerald-500/30 text-emerald-400 bg-emerald-500/10 font-mono text-xs"
+												>
+													<CheckCircle2 className="h-3 w-3 mr-1" /> Queued!
+												</Badge>
+											)}
+
+											<Button
+												type="button"
 												variant="outline"
-												className="border-emerald-500/30 text-emerald-400 bg-emerald-500/10 font-mono text-xs"
+												size="sm"
+												onClick={() => setIsCollectionsOpen(true)}
+												className="h-7 px-2 text-xs font-mono text-muted-foreground hover:text-foreground cursor-pointer"
+												title="Open Publisher Studio to load saved templates"
 											>
-												<CheckCircle2 className="h-3 w-3 mr-1" /> Queued!
-											</Badge>
-										)}
+												<SendHorizontal className="h-3 w-3 mr-1 text-primary" />
+												Studio
+											</Button>
+
+											<Button
+												type="button"
+												variant="outline"
+												size="sm"
+												onClick={() => {
+													saveTemplateToCollection("saved-templates", {
+														id: `tpl-${Date.now()}`,
+														name: `${queueName} message`,
+														targetType: "queue",
+														targetName: queueName,
+														vhost,
+														routingKey: pubRoutingKey || queueName,
+														payload: pubPayload,
+														createdAt: Date.now(),
+														updatedAt: Date.now(),
+													});
+													toast.success("Saved to Collections");
+												}}
+												className="h-7 px-2 text-xs font-mono text-muted-foreground hover:text-foreground cursor-pointer"
+												title="Save current payload and routing key to collections"
+											>
+												<BookmarkPlus className="h-3 w-3 mr-1 text-emerald-500" />
+												Save
+											</Button>
+										</div>
 									</div>
 								</CardHeader>
 								<CardContent className="p-4 space-y-3">
@@ -1159,9 +1289,12 @@ export function QueueDetailPage() {
 							{selectedMessage.properties &&
 								Object.keys(selectedMessage.properties).length > 0 && (
 									<div className="space-y-1">
-										<span className="text-xs font-semibold text-muted-foreground block">
-											AMQP Properties &amp; Headers
-										</span>
+										<div className="flex items-center justify-between">
+											<span className="text-xs font-semibold text-muted-foreground block">
+												AMQP Properties &amp; Headers
+											</span>
+											<XDeathBadge headers={selectedMessage.properties?.headers} />
+										</div>
 										<div className="p-2.5 rounded-lg bg-slate-50/70 dark:bg-black/50 border border-border/60 overflow-hidden">
 											<JsonHighlighter
 												content={JSON.stringify(
@@ -1181,17 +1314,33 @@ export function QueueDetailPage() {
 									<span className="text-xs font-semibold text-muted-foreground block">
 										Message Payload
 									</span>
-									<Button
-										variant="outline"
-										size="sm"
-										onClick={() => {
-											handleDuplicateMessage(selectedMessage);
-											setSelectedMessage(null);
-										}}
-										className="h-6 text-[11px] px-2 text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/10"
-									>
-										<CopyPlus className="h-3 w-3 mr-1" /> Duplicate to Publisher
-									</Button>
+									<div className="flex items-center gap-1.5">
+										{extractXDeathEntries(selectedMessage.properties?.headers).length > 0 && (
+											<Button
+												variant="outline"
+												size="sm"
+												onClick={() => {
+													setSingleMessageToReplay(selectedMessage);
+													setShowDlqReplayDialog(true);
+													setSelectedMessage(null);
+												}}
+												className="h-6 text-[11px] px-2 text-rose-500 border-rose-500/30 hover:bg-rose-500/10 cursor-pointer"
+											>
+												<RotateCcw className="h-3 w-3 mr-1" /> Replay Message
+											</Button>
+										)}
+										<Button
+											variant="outline"
+											size="sm"
+											onClick={() => {
+												handleDuplicateMessage(selectedMessage);
+												setSelectedMessage(null);
+											}}
+											className="h-6 text-[11px] px-2 text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/10 cursor-pointer"
+										>
+											<CopyPlus className="h-3 w-3 mr-1" /> Duplicate to Publisher
+										</Button>
+									</div>
 								</div>
 								<PayloadViewer
 									payload={selectedMessage.payload}
@@ -1304,6 +1453,37 @@ export function QueueDetailPage() {
 					queueType={queue?.type}
 				/>
 			)}
+
+			{/* DLQ Replay Modal */}
+			<DlqReplayDialog
+				isOpen={showDlqReplayDialog}
+				onClose={() => {
+					setShowDlqReplayDialog(false);
+					setSingleMessageToReplay(null);
+					refetchQueue();
+					fetchMessages();
+				}}
+				vhost={vhost}
+				sourceQueue={queueName}
+				totalMessages={readyMessages}
+				peekedMessages={messages}
+				singleMessage={singleMessageToReplay}
+				onSuccess={() => {
+					refetchQueue();
+					fetchMessages();
+				}}
+			/>
+
+			{/* Test Collections Drawer */}
+			<TestCollectionsDrawer
+				isOpen={isCollectionsOpen}
+				onClose={() => setIsCollectionsOpen(false)}
+				onLoadTemplate={(tpl) => {
+					setPubPayload(tpl.payload);
+					if (tpl.routingKey) setPubRoutingKey(tpl.routingKey);
+					toast.success(`Loaded template "${tpl.name}"`);
+				}}
+			/>
 		</>
 	);
 }

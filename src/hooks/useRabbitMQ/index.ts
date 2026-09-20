@@ -379,6 +379,21 @@ export function useRabbitVHosts() {
 	});
 }
 
+export function useRabbitVHostDetail(name: string) {
+	const { intervalMs } = useRefreshInterval();
+
+	return useQuery<VirtualHost | null>({
+		queryKey: ["rabbit", "vhost", name],
+		queryFn: async () => {
+			if (!name) return null;
+			const client = getRabbitMQClient();
+			return await client.vhosts.getVhost(name);
+		},
+		enabled: Boolean(name),
+		refetchInterval: intervalMs === 0 ? false : intervalMs,
+	});
+}
+
 export function useRabbitPolicies(vhost?: string) {
 	return useQuery<Policy[]>({
 		queryKey: ["rabbit", "policies", vhost],

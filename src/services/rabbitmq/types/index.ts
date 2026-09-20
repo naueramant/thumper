@@ -15,3 +15,4 @@ export * from './parameter.ts';
 export * from './health.ts';
 export * from './definitions.ts';
 export * from './shovel.ts';
+export * from './xdeath.ts';

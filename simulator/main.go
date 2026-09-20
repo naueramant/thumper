@@ -12,28 +12,19 @@ import (
 	"syscall"
 
 	"github.com/rabbitdash/simulator/internal/config"
+	"github.com/rabbitdash/simulator/internal/mgmt"
 	"github.com/rabbitdash/simulator/internal/topology"
 	"github.com/rabbitdash/simulator/internal/workload"
 )
 
 func main() {
 	cfg := config.Load()
-	log.Printf("🥕 CarrotWorks simulator starting (broker=%s, scale=%.2f)", cfg.AMQPURL, cfg.Scale)
-
-	conn, err := workload.Dial(cfg, "carrotworks-topology-bootstrap")
-	if err != nil {
-		log.Fatalf("connect to broker: %v", err)
-	}
-	if err := topology.Declare(conn); err != nil {
-		log.Fatalf("declare topology: %v", err)
-	}
-	conn.Close()
-	log.Println("topology declared: 9 exchanges, 22 queues across direct/fanout/topic/headers exchanges and classic/quorum/stream/priority queues")
+	log.Printf("🥕 CarrotWorks simulator starting (broker=%s, scale=%.2f, vhosts=%v)", cfg.AMQPURL, cfg.Scale, config.VHosts)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	producers := []func(context.Context, config.Config){
+	producers := []func(context.Context, config.Config, string){
 		workload.RunOrderProducer,
 		workload.RunKitchenProducer,
 		workload.RunDeliveryProducer,
@@ -43,11 +34,30 @@ func main() {
 		workload.RunPaymentProducer,
 		workload.RunEventStreamProducer,
 	}
-	for _, p := range producers {
-		go p(ctx, cfg)
-	}
 
-	workload.StartAllConsumers(ctx, cfg)
+	for _, vhost := range config.VHosts {
+		if vhost != "/" {
+			if err := mgmt.EnsureVHost(cfg, vhost); err != nil {
+				log.Fatalf("provision vhost %q: %v", vhost, err)
+			}
+			log.Printf("vhost %q ready", vhost)
+		}
+
+		conn, err := workload.Dial(cfg, vhost, workload.ConnName("carrotworks-topology-bootstrap", vhost))
+		if err != nil {
+			log.Fatalf("connect to broker (vhost %q): %v", vhost, err)
+		}
+		if err := topology.Declare(conn); err != nil {
+			log.Fatalf("declare topology (vhost %q): %v", vhost, err)
+		}
+		conn.Close()
+		log.Printf("topology declared in vhost %q: 9 exchanges, 22 queues across direct/fanout/topic/headers exchanges and classic/quorum/stream/priority queues", vhost)
+
+		for _, p := range producers {
+			go p(ctx, cfg, vhost)
+		}
+		workload.StartAllConsumers(ctx, cfg, vhost)
+	}
 
 	log.Println("all CarrotWorks services running — press Ctrl+C to stop")
 
@@ -58,3 +68,4 @@ func main() {
 	log.Println("shutting down CarrotWorks simulator…")
 	cancel()
 }
+

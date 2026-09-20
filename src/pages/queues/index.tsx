@@ -26,6 +26,7 @@ import {
 	useRabbitMutations,
 	useRabbitQueues,
 } from "@/hooks/useRabbitMQ/index.ts";
+import { isDlqSink, isDlqSource, getDlqTargetExchange } from "./utils/dlqUtils.ts";
 import { useUrlState } from "@/hooks/useUrlState/index.ts";
 import { useVHost } from "@/hooks/useVHost/index.ts";
 import type { Queue } from "@/services/rabbitmq/types/queue.ts";
@@ -184,6 +185,11 @@ export function QueuesPage() {
 				label: "Not running",
 				predicate: (q: Queue) => (q.state || "running") !== "running",
 			},
+			{
+				id: "dlq",
+				label: "DLQ Queues",
+				predicate: (q: Queue) => isDlqSink(q) || isDlqSource(q),
+			},
 		],
 		[],
 	);
@@ -325,8 +331,21 @@ export function QueuesPage() {
 							}}
 							className="flex flex-col group cursor-pointer"
 						>
-							<span className="font-semibold text-foreground group-hover:text-primary transition-colors font-mono text-xs flex items-center gap-1">
+							<span className="font-semibold text-foreground group-hover:text-primary transition-colors font-mono text-xs flex items-center gap-1.5 flex-wrap">
 								{info.getValue()}
+								{isDlqSink(q) && (
+									<span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-mono font-medium border border-rose-500/30 text-rose-500 bg-rose-500/10">
+										DLQ
+									</span>
+								)}
+								{isDlqSource(q) && (
+									<span
+										className="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-mono font-medium border border-amber-500/30 text-amber-500 bg-amber-500/10"
+										title={`Configured with dead-letter exchange: ${getDlqTargetExchange(q)}`}
+									>
+										DLX
+									</span>
+								)}
 								<ChevronRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity text-primary" />
 							</span>
 							<span className="text-[11px] text-muted-foreground font-mono">
@@ -454,6 +473,8 @@ export function QueuesPage() {
 				header: "",
 				cell: (info) => {
 					const q = info.row.original;
+					const isSystem = q.name.startsWith("amq.") || Boolean((q as any).internal);
+					const isStream = q.type === "stream";
 					return (
 						<div className="flex items-center justify-end gap-1">
 							<Link
@@ -473,24 +494,42 @@ export function QueuesPage() {
 									Explore
 								</Button>
 							</Link>
-							<Button
-								variant="ghost"
-								size="sm"
-								onClick={() => handlePurgeQueue(q)}
-								className="h-6 w-6 p-0 text-amber-500 hover:bg-amber-500/10"
-								title="Purge Queue Messages"
+							<span
+								title={
+									isStream
+										? "Streams cannot be purged"
+										: "Purge Queue Messages"
+								}
+								className="inline-flex"
 							>
-								<Eraser className="h-3 w-3" />
-							</Button>
-							<Button
-								variant="ghost"
-								size="sm"
-								onClick={() => handleDeleteQueue(q)}
-								className="h-6 w-6 p-0 text-destructive hover:bg-destructive/10"
-								title="Delete Queue"
+								<Button
+									variant="ghost"
+									size="sm"
+									onClick={() => handlePurgeQueue(q)}
+									disabled={isStream}
+									className="h-6 w-6 p-0 text-amber-500 hover:bg-amber-500/10"
+								>
+									<Eraser className="h-3 w-3" />
+								</Button>
+							</span>
+							<span
+								title={
+									isSystem
+										? "System queues cannot be deleted"
+										: "Delete Queue"
+								}
+								className="inline-flex"
 							>
-								<Trash2 className="h-3 w-3" />
-							</Button>
+								<Button
+									variant="ghost"
+									size="sm"
+									onClick={() => handleDeleteQueue(q)}
+									disabled={isSystem}
+									className="h-6 w-6 p-0 text-destructive hover:bg-destructive/10"
+								>
+									<Trash2 className="h-3 w-3" />
+								</Button>
+							</span>
 						</div>
 					);
 				},

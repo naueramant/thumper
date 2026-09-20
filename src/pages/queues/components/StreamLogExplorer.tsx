@@ -390,7 +390,7 @@ export function StreamLogExplorer({
 									<TableHead className="text-[11px] font-mono">Exchange</TableHead>
 									<TableHead className="text-[11px] font-mono">Size</TableHead>
 									<TableHead className="text-[11px]">Payload Preview</TableHead>
-									<TableHead className="text-right text-[11px]">Actions</TableHead>
+									<TableHead className="text-right text-[11px]" />
 								</TableRow>
 							</TableHeader>
 							<TableBody>

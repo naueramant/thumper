@@ -2,6 +2,7 @@ import { Layout } from "@/components/Layout/index.tsx";
 import { getStoredAuth } from "@/hooks/useAuth/index.ts";
 import { useSessionExpiredRedirect } from "@/hooks/useAuth/useSessionExpiredRedirect.ts";
 import { AdminPage, DEFAULT_ADMIN_TAB } from "@/pages/admin/index.tsx";
+import { VHostDetailPage } from "@/pages/admin/vhost-detail.tsx";
 import {
 	ChannelDetailPage,
 	DEFAULT_CHANNEL_TAB,
@@ -17,6 +18,7 @@ import {
 	ExchangeDetailPage,
 } from "@/pages/exchanges/detail.tsx";
 import { ExchangesPage } from "@/pages/exchanges/index.tsx";
+import { HelpPage } from "@/pages/help/index.tsx";
 import { LoginPage } from "@/pages/login/index.tsx";
 import { OverviewPage } from "@/pages/overview/index.tsx";
 import { DEFAULT_QUEUE_TAB, QueueDetailPage } from "@/pages/queues/detail.tsx";
@@ -222,11 +224,23 @@ const adminTabRoute = createRoute({
 	component: AdminPage,
 });
 
+const vhostDetailRoute = createRoute({
+	getParentRoute: () => appLayoutRoute,
+	path: "/admin/vhosts/$name",
+	component: VHostDetailPage,
+});
+
 const shovelsRoute = createRoute({
 	getParentRoute: () => appLayoutRoute,
 	path: "/shovels",
 	validateSearch: parseListSearch,
 	component: ShovelsPage,
+});
+
+const helpRoute = createRoute({
+	getParentRoute: () => appLayoutRoute,
+	path: "/help",
+	component: HelpPage,
 });
 
 const routeTree = rootRoute.addChildren([
@@ -249,6 +263,8 @@ const routeTree = rootRoute.addChildren([
 		shovelsRoute,
 		adminRoute,
 		adminTabRoute,
+		vhostDetailRoute,
+		helpRoute,
 	]),
 ]);
 

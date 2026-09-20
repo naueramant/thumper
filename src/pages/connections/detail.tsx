@@ -2,6 +2,10 @@ import { Breadcrumbs } from "@/components/Breadcrumbs/index.tsx";
 import { Badge } from "@/components/ui/badge/index.tsx";
 import { Button } from "@/components/ui/button/index.tsx";
 import {
+	ClientCapabilitiesSection,
+	ClientPropertiesOverview,
+} from "@/pages/connections/components/ClientCapabilitiesSection.tsx";
+import {
 	Card,
 	CardContent,
 	CardDescription,
@@ -485,62 +489,22 @@ export function ConnectionDetailPage() {
 								Metadata sent by the client library during the AMQP handshake.
 							</CardDescription>
 						</CardHeader>
-						<CardContent className="p-4 space-y-4">
-							<div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs">
-								<div>
-									<div className="text-[10px] text-muted-foreground uppercase font-semibold">
-										Product
-									</div>
-									<div className="font-mono text-foreground">
-										{connection?.client_properties?.product || "Unknown"}
-									</div>
-								</div>
-								<div>
-									<div className="text-[10px] text-muted-foreground uppercase font-semibold">
-										Version
-									</div>
-									<div className="font-mono text-foreground">
-										{connection?.client_properties?.version || "Unknown"}
-									</div>
-								</div>
-								<div>
-									<div className="text-[10px] text-muted-foreground uppercase font-semibold">
-										Platform
-									</div>
-									<div className="font-mono text-foreground">
-										{connection?.client_properties?.platform || "Unknown"}
-									</div>
-								</div>
-							</div>
-
-							<div className="space-y-1.5">
-								<h4 className="text-xs font-semibold text-foreground">
-									Capabilities
-								</h4>
-								<div className="p-3 rounded-lg border border-border bg-muted/10 font-mono text-[11px] space-y-1">
-									{connection?.client_properties?.capabilities ? (
-										Object.entries(
-											connection.client_properties.capabilities,
-										).map(([key, value]) => (
-											<div
-												key={key}
-												className="flex items-center justify-between"
-											>
-												<span className="text-muted-foreground">{key}</span>
-												<Badge
-													variant={value ? "success" : "outline"}
-													className="text-[9px] py-0"
-												>
-													{String(value)}
-												</Badge>
-											</div>
-										))
-									) : (
-										<span className="text-muted-foreground">
-											No capabilities reported.
-										</span>
-									)}
-								</div>
+						<CardContent className="p-4 space-y-6">
+							<ClientPropertiesOverview
+								clientProperties={
+									connection?.client_properties as
+										| Record<string, any>
+										| undefined
+								}
+							/>
+							<div className="border-t border-border/40 pt-4">
+								<ClientCapabilitiesSection
+									clientProperties={
+										connection?.client_properties as
+											| Record<string, any>
+											| undefined
+									}
+								/>
 							</div>
 						</CardContent>
 					</Card>

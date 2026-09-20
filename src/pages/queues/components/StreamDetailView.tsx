@@ -37,7 +37,7 @@ import { StreamConsumerLagTable } from "./StreamConsumerLagTable.tsx";
 import { StreamLogExplorer } from "./StreamLogExplorer.tsx";
 import { StreamRetentionCard } from "./StreamRetentionCard.tsx";
 
-export type StreamTab = "log" | "consumers" | "retention" | "topology" | "bindings" | "publish";
+type StreamTab = "log" | "consumers" | "retention" | "topology" | "bindings" | "publish";
 
 interface StreamDetailViewProps {
 	queue: Queue;

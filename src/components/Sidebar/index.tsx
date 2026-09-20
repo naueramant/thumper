@@ -8,6 +8,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import {
 	Activity,
 	ArrowLeftRight,
+	HelpCircle,
 	Layers,
 	LayoutDashboard,
 	PanelLeftClose,
@@ -38,8 +39,10 @@ export function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
 	const { data: isShovelEnabled = false } = useRabbitShovelPlugin();
 	const { user } = useAuth();
 
-	const clusterName = overview?.cluster_name || "rabbit@cluster";
-	const rabbitmqVersion = overview?.rabbitmq_version || "4.3.6";
+	// Undefined until the overview has actually loaded — avoid showing a guessed
+	// cluster name/version before we know the real value.
+	const clusterName = overview?.cluster_name;
+	const rabbitmqVersion = overview?.rabbitmq_version;
 
 	const isAdmin = user?.tags?.some((tag) => ADMIN_TAGS.includes(tag)) ?? false;
 
@@ -108,7 +111,7 @@ export function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
 						Thumber
 					</span>
 					<span className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground truncate leading-tight">
-						RabbitMQ {rabbitmqVersion}
+						RabbitMQ {rabbitmqVersion ?? "—"}
 					</span>
 				</div>
 
@@ -207,6 +210,42 @@ export function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
 				})}
 			</nav>
 
+			{/* Help & About (pinned just above the cluster card) */}
+			<div className="px-2">
+				<Link
+					to="/help"
+					title={isCollapsed ? "Help & About" : undefined}
+					className={cn(
+						"group relative flex items-center h-9.5 rounded-lg text-sm font-medium transition-colors duration-200 overflow-hidden",
+						isCollapsed ? "w-full justify-start" : "w-full",
+						currentPath === "/help"
+							? "bg-primary/10 text-primary font-semibold dark:bg-primary/15"
+							: "text-muted-foreground hover:bg-muted/70 hover:text-foreground",
+					)}
+				>
+					<div className="flex h-9.5 w-12 shrink-0 items-center justify-center">
+						<HelpCircle
+							className={cn(
+								"h-4.5 w-4.5 shrink-0 transition-colors duration-200",
+								currentPath === "/help"
+									? "text-primary"
+									: "text-muted-foreground group-hover:text-foreground",
+							)}
+						/>
+					</div>
+					<div
+						className={cn(
+							"flex items-center overflow-hidden whitespace-nowrap transition-all duration-300 ease-[cubic-bezier(0.2,0,0,1)]",
+							isCollapsed
+								? "max-w-0 opacity-0 -translate-x-2 pointer-events-none"
+								: "max-w-[140px] opacity-100 translate-x-0",
+						)}
+					>
+						<span className="truncate">Help &amp; About</span>
+					</div>
+				</Link>
+			</div>
+
 			{/* Cluster Footer */}
 			<div className="p-2">
 				<div className="group relative">
@@ -248,9 +287,9 @@ export function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
 									<Server className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
 									<span
 										className="truncate font-mono text-[11px]"
-										title={clusterName}
+										title={clusterName ?? "—"}
 									>
-										{clusterName}
+										{clusterName ?? "—"}
 									</span>
 								</div>
 								<span
@@ -259,9 +298,9 @@ export function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
 								/>
 							</div>
 							<div className="flex justify-between text-[10px] text-muted-foreground whitespace-nowrap">
-								<span>Erlang {overview?.erlang_version || "27"}</span>
+								<span>Erlang {overview?.erlang_version ?? "—"}</span>
 								<span className="text-primary font-medium">
-									{overview?.object_totals?.queues ?? 0} queues
+									{overview ? (overview.object_totals?.queues ?? 0) : "—"} queues
 								</span>
 							</div>
 						</div>
@@ -274,7 +313,7 @@ export function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
 								<div className="flex items-center gap-1.5 text-foreground font-medium truncate">
 									<Server className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
 									<span className="truncate font-mono text-[11px]">
-										{clusterName}
+										{clusterName ?? "—"}
 									</span>
 								</div>
 								<span
@@ -283,9 +322,9 @@ export function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
 								/>
 							</div>
 							<div className="mt-1.5 flex justify-between text-[10px] text-muted-foreground border-t border-border/40 pt-1.5">
-								<span>Erlang {overview?.erlang_version || "27"}</span>
+								<span>Erlang {overview?.erlang_version ?? "—"}</span>
 								<span className="text-primary font-medium">
-									{overview?.object_totals?.queues ?? 0} queues
+									{overview ? (overview.object_totals?.queues ?? 0) : "—"} queues
 								</span>
 							</div>
 						</div>

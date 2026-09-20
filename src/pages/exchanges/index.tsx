@@ -390,17 +390,24 @@ export function ExchangesPage() {
 									Explore
 								</Button>
 							</Link>
-							{!isSystem && (
+							<span
+								title={
+									isSystem
+										? "System exchanges cannot be deleted"
+										: "Delete Exchange"
+								}
+								className="inline-flex"
+							>
 								<Button
 									variant="ghost"
 									size="sm"
 									onClick={() => handleDeleteExchange(ex)}
+									disabled={isSystem}
 									className="h-6 w-6 p-0 text-destructive hover:bg-destructive/10"
-									title="Delete Exchange"
 								>
 									<Trash2 className="h-3 w-3" />
 								</Button>
-							)}
+							</span>
 						</div>
 					);
 				},

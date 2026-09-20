@@ -36,6 +36,7 @@ import {
 	ArrowLeftRight,
 	ArrowUp,
 	ArrowUpDown,
+	Eye,
 	Lock,
 	Search,
 	ShieldCheck,
@@ -286,11 +287,13 @@ export function ConnectionsPage() {
 						params={{ name: encodeURIComponent(info.row.original.name) }}
 					>
 						<Button
-							variant="outline"
+							variant="ghost"
 							size="sm"
-							className="h-6 text-[11px] px-2"
+							className="h-6 text-[11px] px-2 text-primary hover:bg-primary/10"
+							title="Explore Connection Details"
 						>
-							Inspect
+							<Eye className="h-3 w-3 mr-1" />
+							Explore
 						</Button>
 					</Link>
 				),

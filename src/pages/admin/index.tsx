@@ -29,17 +29,14 @@ import {
 	useRabbitOverview,
 	useRabbitPermissions,
 	useRabbitPolicies,
-	useRabbitShovels,
 	useRabbitTopicPermissions,
 	useRabbitUsers,
 	useRabbitVHosts,
 } from "@/hooks/useRabbitMQ/index.ts";
 import type { Policy } from "@/services/rabbitmq/types/policy.ts";
 import type { User } from "@/services/rabbitmq/types/user.ts";
-import type { VirtualHost } from "@/services/rabbitmq/types/vhost.ts";
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import {
-	ExternalLink,
 	Eye,
 	Flag,
 	HardDrive,
@@ -109,7 +106,6 @@ export function AdminPage() {
 	const { data: featureFlags = [] } = useRabbitFeatureFlags();
 	const { data: overview } = useRabbitOverview();
 	const { data: limitsData } = useRabbitLimits();
-	const { data: shovels = [] } = useRabbitShovels();
 
 	const {
 		createUser,
@@ -201,22 +197,6 @@ export function AdminPage() {
 	const [updateUserPassword, setUpdateUserPassword] = React.useState("");
 	const [isUpdatingUser, setIsUpdatingUser] = React.useState(false);
 
-	// Virtual host detail modal state
-	const [vhostDetail, setVHostDetail] = React.useState<VirtualHost | null>(
-		null,
-	);
-	const [vhostPermUser, setVHostPermUser] = React.useState("");
-	const [vhostPermConf, setVHostPermConf] = React.useState(".*");
-	const [vhostPermWrite, setVHostPermWrite] = React.useState(".*");
-	const [vhostPermRead, setVHostPermRead] = React.useState(".*");
-	const [isSettingVHostPerm, setIsSettingVHostPerm] = React.useState(false);
-	const [vhostTopicPermUser, setVHostTopicPermUser] = React.useState("");
-	const [vhostTopicPermExchange, setVHostTopicPermExchange] =
-		React.useState("");
-	const [vhostTopicPermWrite, setVHostTopicPermWrite] = React.useState(".*");
-	const [vhostTopicPermRead, setVHostTopicPermRead] = React.useState(".*");
-	const [isSettingVHostTopicPerm, setIsSettingVHostTopicPerm] =
-		React.useState(false);
 
 	const permUserGrants = React.useMemo(
 		() => permissions.filter((p) => p.user === permUser?.name),
@@ -231,19 +211,6 @@ export function AdminPage() {
 	const { data: topicPermVHostExchanges = [] } =
 		useRabbitExchanges(topicPermVHost);
 
-	const vhostDetailPermissions = React.useMemo(
-		() => permissions.filter((p) => p.vhost === vhostDetail?.name),
-		[permissions, vhostDetail],
-	);
-
-	const vhostDetailTopicPermissions = React.useMemo(
-		() => topicPermissions.filter((p) => p.vhost === vhostDetail?.name),
-		[topicPermissions, vhostDetail],
-	);
-
-	const { data: vhostDetailExchanges = [] } = useRabbitExchanges(
-		vhostDetail?.name,
-	);
 
 	// Prefill the form with the existing grant for the selected vhost, if any
 	React.useEffect(() => {
@@ -271,20 +238,6 @@ export function AdminPage() {
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [permUser]);
 
-	// Reset the vhost management modal's forms whenever the target vhost changes
-	React.useEffect(() => {
-		if (vhostDetail) {
-			setVHostPermUser(users[0]?.name ?? "");
-			setVHostPermConf(".*");
-			setVHostPermWrite(".*");
-			setVHostPermRead(".*");
-			setVHostTopicPermUser(users[0]?.name ?? "");
-			setVHostTopicPermExchange("");
-			setVHostTopicPermWrite(".*");
-			setVHostTopicPermRead(".*");
-		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [vhostDetail]);
 
 	React.useEffect(() => {
 		if (overview?.cluster_name) {
@@ -447,98 +400,6 @@ export function AdminPage() {
 		}
 	};
 
-	const handleSetVHostPermission = async (e: React.FormEvent) => {
-		e.preventDefault();
-		if (!vhostDetail || !vhostPermUser) return;
-		setIsSettingVHostPerm(true);
-		try {
-			await setUserPermissions.mutateAsync({
-				vhost: vhostDetail.name,
-				user: vhostPermUser,
-				permissions: {
-					configure: vhostPermConf,
-					write: vhostPermWrite,
-					read: vhostPermRead,
-				},
-			});
-			toast.success(
-				`Updated permissions for ${vhostPermUser} on ${vhostDetail.name}`,
-			);
-		} catch (err: any) {
-			toast.error("Failed to set permissions", err.message || String(err));
-		} finally {
-			setIsSettingVHostPerm(false);
-		}
-	};
-
-	const handleClearVHostPermission = async (user: string) => {
-		if (!vhostDetail) return;
-		if (
-			!(await confirm({
-				title: "Revoke Access?",
-				description: `Remove ${user}'s permissions on virtual host "${vhostDetail.name}"?`,
-				confirmLabel: "Revoke Access",
-			}))
-		)
-			return;
-		try {
-			await clearUserPermissions.mutateAsync({
-				vhost: vhostDetail.name,
-				user,
-			});
-			toast.success(`Revoked ${user}'s access to ${vhostDetail.name}`);
-		} catch (err: any) {
-			toast.error("Failed to revoke permissions", err.message || String(err));
-		}
-	};
-
-	const handleSetVHostTopicPermission = async (e: React.FormEvent) => {
-		e.preventDefault();
-		if (!vhostDetail || !vhostTopicPermUser || !vhostTopicPermExchange.trim())
-			return;
-		setIsSettingVHostTopicPerm(true);
-		try {
-			await setUserTopicPermission.mutateAsync({
-				vhost: vhostDetail.name,
-				user: vhostTopicPermUser,
-				exchange: vhostTopicPermExchange.trim(),
-				write: vhostTopicPermWrite,
-				read: vhostTopicPermRead,
-			});
-			toast.success(
-				`Set topic permission for ${vhostTopicPermUser} on ${vhostDetail.name}`,
-			);
-		} catch (err: any) {
-			toast.error("Failed to set topic permission", err.message || String(err));
-		} finally {
-			setIsSettingVHostTopicPerm(false);
-		}
-	};
-
-	const handleClearVHostTopicPermission = async (user: string) => {
-		if (!vhostDetail) return;
-		if (
-			!(await confirm({
-				title: "Revoke Topic Access?",
-				description: `Remove ${user}'s topic permissions on virtual host "${vhostDetail.name}"?`,
-				confirmLabel: "Revoke Access",
-			}))
-		)
-			return;
-		try {
-			await clearUserTopicPermission.mutateAsync({
-				vhost: vhostDetail.name,
-				user,
-			});
-			toast.success(`Revoked ${user}'s topic access to ${vhostDetail.name}`);
-		} catch (err: any) {
-			toast.error(
-				"Failed to revoke topic permissions",
-				err.message || String(err),
-			);
-		}
-	};
-
 	const handleCreateVHost = async (e: React.FormEvent) => {
 		e.preventDefault();
 		if (!newVHostName.trim()) return;
@@ -576,7 +437,6 @@ export function AdminPage() {
 			return;
 		try {
 			await deleteVHost.mutateAsync(name);
-			setVHostDetail((prev) => (prev?.name === name ? null : prev));
 		} catch (err: any) {
 			toast.error("Failed to delete virtual host", err.message || String(err));
 		}
@@ -926,7 +786,7 @@ export function AdminPage() {
 										<TableHead>User Name</TableHead>
 										<TableHead>Tags & Roles</TableHead>
 										<TableHead>Password Status</TableHead>
-										<TableHead className="text-right">Actions</TableHead>
+										<TableHead className="text-right" />
 									</TableRow>
 								</TableHeader>
 								<TableBody>
@@ -984,17 +844,24 @@ export function AdminPage() {
 															<ShieldCheck className="h-3 w-3 mr-1" />
 															Permissions
 														</Button>
-														{u.name !== "guest" && (
+														<span
+															title={
+																u.name === "guest"
+																	? "Default guest user cannot be deleted"
+																	: "Delete User"
+															}
+															className="inline-flex"
+														>
 															<Button
 																variant="ghost"
 																size="sm"
 																onClick={() => handleDeleteUser(u.name)}
+																disabled={u.name === "guest"}
 																className="h-6 w-6 p-0 text-destructive hover:bg-destructive/10"
-																title="Delete User"
 															>
 																<Trash2 className="h-3 w-3" />
 															</Button>
-														)}
+														</span>
 													</TableCell>
 												</TableRow>
 											);
@@ -1090,15 +957,21 @@ export function AdminPage() {
 										<TableHead>Default Queue Type</TableHead>
 										<TableHead>Messages</TableHead>
 										<TableHead>Tracing</TableHead>
-										<TableHead className="text-right">Actions</TableHead>
+										<TableHead className="text-right" />
 									</TableRow>
 								</TableHeader>
 								<TableBody>
 									{filteredVHosts.length ? (
 										filteredVHosts.map((v) => (
 											<TableRow key={v.name}>
-												<TableCell className="font-mono text-xs font-bold text-foreground">
-													{v.name}
+												<TableCell className="font-mono text-xs font-bold">
+													<Link
+														to="/admin/vhosts/$name"
+														params={{ name: encodeURIComponent(v.name) }}
+														className="text-foreground hover:text-primary transition-colors"
+													>
+														{v.name}
+													</Link>
 												</TableCell>
 												<TableCell className="text-xs text-muted-foreground">
 													{v.description || "—"}
@@ -1126,23 +999,35 @@ export function AdminPage() {
 													<Button
 														variant="ghost"
 														size="sm"
-														onClick={() => setVHostDetail(v)}
+														onClick={() =>
+															navigate({
+																to: "/admin/vhosts/$name",
+																params: { name: encodeURIComponent(v.name) },
+															})
+														}
 														className="h-6 text-[11px] px-2 text-primary hover:bg-primary/10"
 													>
 														<Eye className="h-3 w-3 mr-1" />
 														Manage
 													</Button>
-													{v.name !== "/" && (
+													<span
+														title={
+															v.name === "/"
+																? "Default virtual host cannot be deleted"
+																: "Delete Virtual Host"
+														}
+														className="inline-flex"
+													>
 														<Button
 															variant="ghost"
 															size="sm"
 															onClick={() => handleDeleteVHost(v.name)}
+															disabled={v.name === "/"}
 															className="h-6 w-6 p-0 text-destructive hover:bg-destructive/10"
-															title="Delete Virtual Host"
 														>
 															<Trash2 className="h-3 w-3" />
 														</Button>
-													)}
+													</span>
 												</TableCell>
 											</TableRow>
 										))
@@ -1238,7 +1123,7 @@ export function AdminPage() {
 										<TableHead>Apply To</TableHead>
 										<TableHead>Priority</TableHead>
 										<TableHead>Definition</TableHead>
-										<TableHead className="text-right">Actions</TableHead>
+										<TableHead className="text-right" />
 									</TableRow>
 								</TableHeader>
 								<TableBody>
@@ -1420,122 +1305,58 @@ export function AdminPage() {
 				</div>
 			)}
 
-			{/* TAB 5: LIMITS & SHOVELS */}
+			{/* TAB 5: LIMITS */}
 			{activeTab === "limits" && (
 				<div className="space-y-5">
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-						{/* VHost Limits */}
-						<Card>
-							<CardHeader className="pb-3">
-								<CardTitle className="text-sm font-semibold">
-									Virtual Host Limits
-								</CardTitle>
-								<CardDescription className="text-xs">
-									Max connections and queue quotas per virtual host
-								</CardDescription>
-							</CardHeader>
-							<CardContent className="p-0">
-								<Table>
-									<TableHeader>
-										<TableRow>
-											<TableHead>VHost</TableHead>
-											<TableHead>Max Connections</TableHead>
-											<TableHead>Max Queues</TableHead>
-										</TableRow>
-									</TableHeader>
-									<TableBody>
-										{limitsData?.vhostLimits &&
-										limitsData.vhostLimits.length > 0 ? (
-											limitsData.vhostLimits.map((l) => (
-												<TableRow key={l.vhost}>
-													<TableCell className="font-mono text-xs font-semibold">
-														{l.vhost}
-													</TableCell>
-													<TableCell className="font-mono text-xs">
-														{l.value["max-connections"] ?? "Unlimited"}
-													</TableCell>
-													<TableCell className="font-mono text-xs">
-														{l.value["max-queues"] ?? "Unlimited"}
-													</TableCell>
-												</TableRow>
-											))
-										) : (
-											<TableRow>
-												<TableCell
-													colSpan={3}
-													className="h-20 text-center text-muted-foreground text-xs"
-												>
-													No virtual host quotas set (unlimited).
+					{/* VHost Limits */}
+					<Card>
+						<CardHeader className="pb-3">
+							<CardTitle className="text-sm font-semibold">
+								Virtual Host Limits
+							</CardTitle>
+							<CardDescription className="text-xs">
+								Max connections and queue quotas per virtual host
+							</CardDescription>
+						</CardHeader>
+						<CardContent className="p-0">
+							<Table>
+								<TableHeader>
+									<TableRow>
+										<TableHead>VHost</TableHead>
+										<TableHead>Max Connections</TableHead>
+										<TableHead>Max Queues</TableHead>
+									</TableRow>
+								</TableHeader>
+								<TableBody>
+									{limitsData?.vhostLimits &&
+									limitsData.vhostLimits.length > 0 ? (
+										limitsData.vhostLimits.map((l) => (
+											<TableRow key={l.vhost}>
+												<TableCell className="font-mono text-xs font-semibold">
+													{l.vhost}
+												</TableCell>
+												<TableCell className="font-mono text-xs">
+													{l.value["max-connections"] ?? "Unlimited"}
+												</TableCell>
+												<TableCell className="font-mono text-xs">
+													{l.value["max-queues"] ?? "Unlimited"}
 												</TableCell>
 											</TableRow>
-										)}
-									</TableBody>
-								</Table>
-							</CardContent>
-						</Card>
-
-						{/* Dynamic Shovels */}
-						<Card>
-							<CardHeader className="pb-3 flex flex-row items-center justify-between">
-								<div>
-									<CardTitle className="text-sm font-semibold">
-										Dynamic Shovels
-									</CardTitle>
-									<CardDescription className="text-xs">
-										Unidirectional cross-cluster message bridges
-									</CardDescription>
-								</div>
-								<Button
-									variant="outline"
-									size="sm"
-									className="h-7 text-xs gap-1 font-mono"
-									onClick={() => navigate({ to: "/shovels" })}
-								>
-									Manage Shovels
-									<ExternalLink className="h-3 w-3" />
-								</Button>
-							</CardHeader>
-							<CardContent className="p-0">
-								<Table>
-									<TableHeader>
+										))
+									) : (
 										<TableRow>
-											<TableHead>Name</TableHead>
-											<TableHead>VHost</TableHead>
-											<TableHead>Source &bull; Destination</TableHead>
+											<TableCell
+												colSpan={3}
+												className="h-20 text-center text-muted-foreground text-xs"
+											>
+												No virtual host quotas set (unlimited).
+											</TableCell>
 										</TableRow>
-									</TableHeader>
-									<TableBody>
-										{shovels.length > 0 ? (
-											shovels.map((s) => (
-												<TableRow key={`${s.vhost}:${s.name}`}>
-													<TableCell className="font-mono text-xs font-semibold">
-														{s.name}
-													</TableCell>
-													<TableCell className="font-mono text-xs">
-														{s.vhost}
-													</TableCell>
-													<TableCell className="font-mono text-[11px] truncate max-w-xs">
-														{s.value["src-queue"] || s.value["src-exchange"]}{" "}
-														&rarr;{" "}
-														{s.value["dest-queue"] || s.value["dest-exchange"]}
-													</TableCell>
-												</TableRow>
-											))
-										) : (
-											<TableRow>
-												<TableCell
-													colSpan={3}
-													className="h-20 text-center text-muted-foreground text-xs"
-												>
-													No dynamic shovels configured.
-												</TableCell>
-											</TableRow>
-										)}
-									</TableBody>
-								</Table>
-							</CardContent>
-						</Card>
-					</div>
+									)}
+								</TableBody>
+							</Table>
+						</CardContent>
+					</Card>
 				</div>
 			)}
 
@@ -2281,363 +2102,6 @@ export function AdminPage() {
 				</div>
 			)}
 
-			{/* Virtual Host Management Modal */}
-			{vhostDetail && (
-				<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-xs animate-in fade-in duration-150">
-					<div className="flex w-full max-w-2xl max-h-[85vh] flex-col rounded-xl border border-border bg-card shadow-2xl overflow-hidden animate-in zoom-in-95 fade-in duration-150">
-						<div className="flex items-center justify-between px-6 py-5 border-b border-border bg-muted/20">
-							<div className="flex items-center gap-2">
-								<Network className="h-4 w-4 text-primary" />
-								<h3 className="text-sm font-bold text-foreground">
-									Virtual Host: {vhostDetail.name}
-								</h3>
-							</div>
-							<button
-								type="button"
-								onClick={() => setVHostDetail(null)}
-								className="p-1 rounded text-muted-foreground hover:text-foreground"
-							>
-								<X className="h-4 w-4" />
-							</button>
-						</div>
-						<div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-6 text-sm">
-							{/* Overview */}
-							<div className="space-y-3">
-								<h4 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-									Overview
-								</h4>
-								<div className="grid grid-cols-2 gap-3 text-xs">
-									<div className="space-y-1">
-										<span className="text-muted-foreground">Description</span>
-										<p className="font-mono text-foreground">
-											{vhostDetail.description || "—"}
-										</p>
-									</div>
-									<div className="space-y-1">
-										<span className="text-muted-foreground">
-											Default Queue Type
-										</span>
-										<p>
-											<Badge
-												variant="outline"
-												className="font-mono text-[10px] uppercase"
-											>
-												{vhostDetail.default_queue_type || "classic"}
-											</Badge>
-										</p>
-									</div>
-									<div className="space-y-1">
-										<span className="text-muted-foreground">Tracing</span>
-										<p>
-											<Badge
-												variant={vhostDetail.tracing ? "success" : "outline"}
-												className="text-[10px]"
-											>
-												{vhostDetail.tracing ? "Active" : "Off"}
-											</Badge>
-										</p>
-									</div>
-									<div className="space-y-1">
-										<span className="text-muted-foreground">Messages</span>
-										<p className="font-mono text-foreground">
-											{(vhostDetail.messages ?? 0).toLocaleString()}
-										</p>
-									</div>
-								</div>
-							</div>
-
-							{/* Permissions */}
-							<form
-								id="vhost-permissions-form"
-								onSubmit={handleSetVHostPermission}
-								className="space-y-4 border-t border-border pt-6"
-							>
-								<h4 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-									Permissions
-								</h4>
-								<Table>
-									<TableHeader>
-										<TableRow>
-											<TableHead>User</TableHead>
-											<TableHead>Configure</TableHead>
-											<TableHead>Write</TableHead>
-											<TableHead>Read</TableHead>
-											<TableHead className="text-right">Actions</TableHead>
-										</TableRow>
-									</TableHeader>
-									<TableBody>
-										{vhostDetailPermissions.length ? (
-											vhostDetailPermissions.map((p) => (
-												<TableRow key={p.user}>
-													<TableCell className="font-mono text-xs font-semibold">
-														{p.user}
-													</TableCell>
-													<TableCell className="font-mono text-xs">
-														{p.configure}
-													</TableCell>
-													<TableCell className="font-mono text-xs">
-														{p.write}
-													</TableCell>
-													<TableCell className="font-mono text-xs">
-														{p.read}
-													</TableCell>
-													<TableCell className="text-right">
-														<Button
-															type="button"
-															variant="ghost"
-															size="sm"
-															onClick={() => handleClearVHostPermission(p.user)}
-															className="h-6 w-6 p-0 text-destructive hover:bg-destructive/10"
-															title={`Revoke ${p.user}'s access`}
-														>
-															<Trash2 className="h-3 w-3" />
-														</Button>
-													</TableCell>
-												</TableRow>
-											))
-										) : (
-											<TableRow>
-												<TableCell
-													colSpan={5}
-													className="h-16 text-center text-muted-foreground text-xs"
-												>
-													No permissions granted on this virtual host yet.
-												</TableCell>
-											</TableRow>
-										)}
-									</TableBody>
-								</Table>
-
-								<div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-									<div className="space-y-1.5">
-										<label className="font-medium text-muted-foreground">
-											User
-										</label>
-										<Dropdown
-											value={vhostPermUser}
-											onChange={(v) => setVHostPermUser(v as string)}
-											options={users.map((u) => ({
-												label: u.name,
-												value: u.name,
-											}))}
-											className="w-full"
-											buttonClassName="h-10 w-full justify-between px-3 text-sm font-mono"
-											contentClassName="w-full"
-										/>
-									</div>
-									<div className="space-y-1.5">
-										<label className="font-medium text-muted-foreground">
-											Configure
-										</label>
-										<input
-											type="text"
-											value={vhostPermConf}
-											onChange={(e) => setVHostPermConf(e.target.value)}
-											placeholder=".*"
-											className="h-10 w-full rounded-md border border-border bg-muted/20 px-3 text-sm font-mono"
-										/>
-									</div>
-									<div className="space-y-1.5">
-										<label className="font-medium text-muted-foreground">
-											Write
-										</label>
-										<input
-											type="text"
-											value={vhostPermWrite}
-											onChange={(e) => setVHostPermWrite(e.target.value)}
-											placeholder=".*"
-											className="h-10 w-full rounded-md border border-border bg-muted/20 px-3 text-sm font-mono"
-										/>
-									</div>
-									<div className="space-y-1.5">
-										<label className="font-medium text-muted-foreground">
-											Read
-										</label>
-										<input
-											type="text"
-											value={vhostPermRead}
-											onChange={(e) => setVHostPermRead(e.target.value)}
-											placeholder=".*"
-											className="h-10 w-full rounded-md border border-border bg-muted/20 px-3 text-sm font-mono"
-										/>
-									</div>
-								</div>
-								<div className="flex justify-end">
-									<Button
-										type="submit"
-										size="sm"
-										disabled={isSettingVHostPerm || !vhostPermUser}
-									>
-										{isSettingVHostPerm ? "Saving..." : "Set Permission"}
-									</Button>
-								</div>
-							</form>
-
-							{/* Topic Permissions */}
-							<form
-								id="vhost-topic-permissions-form"
-								onSubmit={handleSetVHostTopicPermission}
-								className="space-y-4 border-t border-border pt-6"
-							>
-								<h4 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-									Topic Permissions
-								</h4>
-								<Table>
-									<TableHeader>
-										<TableRow>
-											<TableHead>User</TableHead>
-											<TableHead>Exchange</TableHead>
-											<TableHead>Write</TableHead>
-											<TableHead>Read</TableHead>
-											<TableHead className="text-right">Actions</TableHead>
-										</TableRow>
-									</TableHeader>
-									<TableBody>
-										{vhostDetailTopicPermissions.length ? (
-											vhostDetailTopicPermissions.map((p) => (
-												<TableRow key={`${p.user}:${p.exchange}`}>
-													<TableCell className="font-mono text-xs font-semibold">
-														{p.user}
-													</TableCell>
-													<TableCell className="font-mono text-xs">
-														{p.exchange || "(AMQP default)"}
-													</TableCell>
-													<TableCell className="font-mono text-xs">
-														{p.write}
-													</TableCell>
-													<TableCell className="font-mono text-xs">
-														{p.read}
-													</TableCell>
-													<TableCell className="text-right">
-														<Button
-															type="button"
-															variant="ghost"
-															size="sm"
-															onClick={() =>
-																handleClearVHostTopicPermission(p.user)
-															}
-															className="h-6 w-6 p-0 text-destructive hover:bg-destructive/10"
-															title={`Revoke ${p.user}'s topic access`}
-														>
-															<Trash2 className="h-3 w-3" />
-														</Button>
-													</TableCell>
-												</TableRow>
-											))
-										) : (
-											<TableRow>
-												<TableCell
-													colSpan={5}
-													className="h-16 text-center text-muted-foreground text-xs"
-												>
-													No topic permissions granted on this virtual host yet.
-												</TableCell>
-											</TableRow>
-										)}
-									</TableBody>
-								</Table>
-
-								<div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-									<div className="space-y-1.5">
-										<label className="font-medium text-muted-foreground">
-											User
-										</label>
-										<Dropdown
-											value={vhostTopicPermUser}
-											onChange={(v) => setVHostTopicPermUser(v as string)}
-											options={users.map((u) => ({
-												label: u.name,
-												value: u.name,
-											}))}
-											className="w-full"
-											buttonClassName="h-10 w-full justify-between px-3 text-sm font-mono"
-											contentClassName="w-full"
-										/>
-									</div>
-									<div className="space-y-1.5">
-										<label className="font-medium text-muted-foreground">
-											Exchange
-										</label>
-										<Dropdown
-											value={vhostTopicPermExchange}
-											onChange={(v) => setVHostTopicPermExchange(v as string)}
-											options={[
-												{ label: "(AMQP default)", value: "" },
-												...vhostDetailExchanges.map((ex) => ({
-													label: ex.name,
-													value: ex.name,
-												})),
-											]}
-											className="w-full"
-											buttonClassName="h-10 w-full justify-between px-3 text-sm font-mono"
-											contentClassName="w-full"
-										/>
-									</div>
-									<div className="space-y-1.5">
-										<label className="font-medium text-muted-foreground">
-											Write
-										</label>
-										<input
-											type="text"
-											value={vhostTopicPermWrite}
-											onChange={(e) => setVHostTopicPermWrite(e.target.value)}
-											placeholder=".*"
-											className="h-10 w-full rounded-md border border-border bg-muted/20 px-3 text-sm font-mono"
-										/>
-									</div>
-									<div className="space-y-1.5">
-										<label className="font-medium text-muted-foreground">
-											Read
-										</label>
-										<input
-											type="text"
-											value={vhostTopicPermRead}
-											onChange={(e) => setVHostTopicPermRead(e.target.value)}
-											placeholder=".*"
-											className="h-10 w-full rounded-md border border-border bg-muted/20 px-3 text-sm font-mono"
-										/>
-									</div>
-								</div>
-								<div className="flex justify-end">
-									<Button
-										type="submit"
-										size="sm"
-										disabled={isSettingVHostTopicPerm || !vhostTopicPermUser}
-									>
-										{isSettingVHostTopicPerm
-											? "Saving..."
-											: "Set Topic Permission"}
-									</Button>
-								</div>
-							</form>
-						</div>
-						<div className="flex justify-between items-center gap-2 px-6 py-4 border-t border-border bg-muted/20">
-							{vhostDetail.name !== "/" ? (
-								<Button
-									type="button"
-									variant="ghost"
-									size="sm"
-									onClick={() => handleDeleteVHost(vhostDetail.name)}
-									className="text-destructive hover:bg-destructive/10"
-								>
-									<Trash2 className="h-3.5 w-3.5 mr-1" />
-									Delete Virtual Host
-								</Button>
-							) : (
-								<span />
-							)}
-							<Button
-								type="button"
-								variant="outline"
-								size="sm"
-								onClick={() => setVHostDetail(null)}
-							>
-								Close
-							</Button>
-						</div>
-					</div>
-				</div>
-			)}
 		</div>
 	);
 }

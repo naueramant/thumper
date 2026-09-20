@@ -27,17 +27,18 @@ type consumerSpec struct {
 // RunConsumer starts a simple simulated worker that consumes, "processes"
 // (sleeps a random duration to look busy on the dashboard) and acks/nacks
 // messages from a single queue.
-func RunConsumer(ctx context.Context, cfg config.Config, spec consumerSpec) {
-	conn, err := Dial(cfg, spec.connectionName)
+func RunConsumer(ctx context.Context, cfg config.Config, vhost string, spec consumerSpec) {
+	connName := ConnName(spec.connectionName, vhost)
+	conn, err := Dial(cfg, vhost, connName)
 	if err != nil {
-		logErr(spec.connectionName, err)
+		logErr(connName, err)
 		return
 	}
 	defer conn.Close()
 
 	ch, err := newChannel(conn)
 	if err != nil {
-		logErr(spec.connectionName, err)
+		logErr(connName, err)
 		return
 	}
 	defer ch.Close()
@@ -47,13 +48,13 @@ func RunConsumer(ctx context.Context, cfg config.Config, spec consumerSpec) {
 		prefetch = 1
 	}
 	if err := ch.Qos(prefetch, 0, false); err != nil {
-		logErr(spec.connectionName, err)
+		logErr(connName, err)
 		return
 	}
 
-	deliveries, err := ch.Consume(spec.queue, spec.connectionName, false, false, false, false, nil)
+	deliveries, err := ch.Consume(spec.queue, connName, false, false, false, false, nil)
 	if err != nil {
-		logErr(spec.connectionName, err)
+		logErr(connName, err)
 		return
 	}
 
@@ -78,27 +79,28 @@ func RunConsumer(ctx context.Context, cfg config.Config, spec consumerSpec) {
 			}
 
 			if spec.nackRate > 0 && rand.Float64() < spec.nackRate {
-				logErr(spec.connectionName, d.Nack(false, false)) // dead-letter, no requeue
+				logErr(connName, d.Nack(false, false)) // dead-letter, no requeue
 				continue
 			}
-			logErr(spec.connectionName, d.Ack(false))
+			logErr(connName, d.Ack(false))
 		}
 	}
 }
 
 // RunEventStreamConsumer tails the CarrotWorks events stream from the
 // first available offset, showcasing RabbitMQ's stream consumer semantics.
-func RunEventStreamConsumer(ctx context.Context, cfg config.Config, connectionName string) {
-	conn, err := Dial(cfg, connectionName)
+func RunEventStreamConsumer(ctx context.Context, cfg config.Config, vhost, connectionName string) {
+	connName := ConnName(connectionName, vhost)
+	conn, err := Dial(cfg, vhost, connName)
 	if err != nil {
-		logErr(connectionName, err)
+		logErr(connName, err)
 		return
 	}
 	defer conn.Close()
 
 	ch, err := newChannel(conn)
 	if err != nil {
-		logErr(connectionName, err)
+		logErr(connName, err)
 		return
 	}
 	defer ch.Close()
@@ -108,11 +110,11 @@ func RunEventStreamConsumer(ctx context.Context, cfg config.Config, connectionNa
 		return
 	}
 
-	deliveries, err := ch.Consume(topology.QEventsStream, connectionName, false, false, false, false, amqp.Table{
+	deliveries, err := ch.Consume(topology.QEventsStream, connName, false, false, false, false, amqp.Table{
 		"x-stream-offset": "next",
 	})
 	if err != nil {
-		logErr(connectionName, err)
+		logErr(connName, err)
 		return
 	}
 
@@ -124,7 +126,7 @@ func RunEventStreamConsumer(ctx context.Context, cfg config.Config, connectionNa
 			if !ok {
 				return
 			}
-			logErr(connectionName, d.Ack(false))
+			logErr(connName, d.Ack(false))
 		}
 	}
 }
@@ -132,7 +134,7 @@ func RunEventStreamConsumer(ctx context.Context, cfg config.Config, connectionNa
 // StartAllConsumers launches one goroutine per simulated CarrotWorks
 // downstream worker, each with its own connection/channel and a
 // distinctive processing profile.
-func StartAllConsumers(ctx context.Context, cfg config.Config) {
+func StartAllConsumers(ctx context.Context, cfg config.Config, vhost string) {
 	specs := []consumerSpec{
 		// Two fulfillment workers race on new orders, like a real worker pool.
 		{"order-fulfillment-worker-1", topology.QOrdersCreated, 5, 50 * time.Millisecond, 250 * time.Millisecond, 0},
@@ -172,8 +174,8 @@ func StartAllConsumers(ctx context.Context, cfg config.Config) {
 	}
 
 	for _, spec := range specs {
-		go RunConsumer(ctx, cfg, spec)
+		go RunConsumer(ctx, cfg, vhost, spec)
 	}
 
-	go RunEventStreamConsumer(ctx, cfg, "events-stream-consumer")
+	go RunEventStreamConsumer(ctx, cfg, vhost, "events-stream-consumer")
 }

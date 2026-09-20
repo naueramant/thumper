@@ -33,8 +33,8 @@ func publishJSON(ch *amqp.Channel, exchange, routingKey string, payload any, ext
 // RunOrderProducer simulates CarrotWorks' order-api service: new orders,
 // payments confirming, occasional cancellations, and a trickle of VIP
 // carrot-club priority orders.
-func RunOrderProducer(ctx context.Context, cfg config.Config) {
-	conn, err := Dial(cfg, "order-api-producer")
+func RunOrderProducer(ctx context.Context, cfg config.Config, vhost string) {
+	conn, err := Dial(cfg, vhost, ConnName("order-api-producer", vhost))
 	if err != nil {
 		logErr("order-api", err)
 		return
@@ -86,8 +86,8 @@ func RunOrderProducer(ctx context.Context, cfg config.Config) {
 
 // RunKitchenProducer simulates the kitchen-worker service turning paid
 // orders into cooking tickets and marking them ready for delivery.
-func RunKitchenProducer(ctx context.Context, cfg config.Config) {
-	conn, err := Dial(cfg, "kitchen-worker-producer")
+func RunKitchenProducer(ctx context.Context, cfg config.Config, vhost string) {
+	conn, err := Dial(cfg, vhost, ConnName("kitchen-worker-producer", vhost))
 	if err != nil {
 		logErr("kitchen-worker", err)
 		return
@@ -123,8 +123,8 @@ func RunKitchenProducer(ctx context.Context, cfg config.Config) {
 // RunDeliveryProducer simulates delivery-tracker publishing region-scoped
 // status updates onto the topic exchange (dispatched -> in-transit ->
 // delivered), driving three regional queues plus a firehose queue.
-func RunDeliveryProducer(ctx context.Context, cfg config.Config) {
-	conn, err := Dial(cfg, "delivery-tracker-producer")
+func RunDeliveryProducer(ctx context.Context, cfg config.Config, vhost string) {
+	conn, err := Dial(cfg, vhost, ConnName("delivery-tracker-producer", vhost))
 	if err != nil {
 		logErr("delivery-tracker", err)
 		return
@@ -164,8 +164,8 @@ func RunDeliveryProducer(ctx context.Context, cfg config.Config) {
 
 // RunNotificationProducer simulates notification-hub fanning order/delivery
 // events out to every channel: email, SMS and push all receive a copy.
-func RunNotificationProducer(ctx context.Context, cfg config.Config) {
-	conn, err := Dial(cfg, "notification-hub-producer")
+func RunNotificationProducer(ctx context.Context, cfg config.Config, vhost string) {
+	conn, err := Dial(cfg, vhost, ConnName("notification-hub-producer", vhost))
 	if err != nil {
 		logErr("notification-hub", err)
 		return
@@ -198,8 +198,8 @@ func RunNotificationProducer(ctx context.Context, cfg config.Config) {
 
 // RunTelemetryProducer simulates fleet-controller receiving IoT sensor
 // pings from bikes, vans and drones, routed by a headers exchange.
-func RunTelemetryProducer(ctx context.Context, cfg config.Config) {
-	conn, err := Dial(cfg, "fleet-controller-producer")
+func RunTelemetryProducer(ctx context.Context, cfg config.Config, vhost string) {
+	conn, err := Dial(cfg, vhost, ConnName("fleet-controller-producer", vhost))
 	if err != nil {
 		logErr("fleet-controller", err)
 		return
@@ -255,8 +255,8 @@ func telemetryReading(sensor string) float64 {
 // RunLogProducer simulates every CarrotWorks microservice emitting
 // structured audit log lines at varying severities onto the topic
 // exchange (log.<service>.<level>).
-func RunLogProducer(ctx context.Context, cfg config.Config) {
-	conn, err := Dial(cfg, "audit-logger-producer")
+func RunLogProducer(ctx context.Context, cfg config.Config, vhost string) {
+	conn, err := Dial(cfg, vhost, ConnName("audit-logger-producer", vhost))
 	if err != nil {
 		logErr("audit-logger", err)
 		return
@@ -290,8 +290,8 @@ func RunLogProducer(ctx context.Context, cfg config.Config) {
 // RunPaymentProducer simulates payments-gateway processing charges. A
 // fraction of payloads are intentionally malformed ("declined") so the
 // consumer nacks them into the dead-letter queue, demonstrating DLX flow.
-func RunPaymentProducer(ctx context.Context, cfg config.Config) {
-	conn, err := Dial(cfg, "payments-gateway-producer")
+func RunPaymentProducer(ctx context.Context, cfg config.Config, vhost string) {
+	conn, err := Dial(cfg, vhost, ConnName("payments-gateway-producer", vhost))
 	if err != nil {
 		logErr("payments-gateway", err)
 		return
@@ -324,8 +324,8 @@ func RunPaymentProducer(ctx context.Context, cfg config.Config) {
 // RunEventStreamProducer floods the append-only events stream with a
 // high-rate firehose of platform-wide business events, showcasing
 // RabbitMQ's stream queue type.
-func RunEventStreamProducer(ctx context.Context, cfg config.Config) {
-	conn, err := Dial(cfg, "events-stream-producer")
+func RunEventStreamProducer(ctx context.Context, cfg config.Config, vhost string) {
+	conn, err := Dial(cfg, vhost, ConnName("events-stream-producer", vhost))
 	if err != nil {
 		logErr("events-stream", err)
 		return

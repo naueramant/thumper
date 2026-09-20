@@ -350,6 +350,10 @@ export function OverviewPage() {
 
 	const ackRate = overview?.message_stats?.ack_details?.rate ?? 0;
 
+	// Overview is undefined until the first successful fetch — show "—" for
+	// stat cards instead of misleading zeros while we don't actually know yet.
+	const isLoaded = !!overview;
+
 	return (
 		<div className="space-y-6">
 			{/* Top Banner / Title */}
@@ -360,15 +364,15 @@ export function OverviewPage() {
 							Cluster Overview
 						</h1>
 						<Badge variant="outline" className="font-mono text-xs">
-							RabbitMQ {overview?.rabbitmq_version || "4.3.6"}
+							RabbitMQ {overview?.rabbitmq_version ?? "—"}
 						</Badge>
 					</div>
 					<p className="text-xs text-muted-foreground mt-0.5">
 						Connected to{" "}
 						<strong className="text-primary font-mono">
-							{overview?.cluster_name || "local"}
+							{overview?.cluster_name ?? "—"}
 						</strong>{" "}
-						&bull; Erlang {overview?.erlang_version || "27"}
+						&bull; Erlang {overview?.erlang_version ?? "—"}
 					</p>
 				</div>
 				<div className="flex items-center gap-2">
@@ -408,35 +412,57 @@ export function OverviewPage() {
 			<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
 				<MetricCard
 					title="Queued Messages"
-					value={totalMessages.toLocaleString()}
-					subValue={`${readyMessages.toLocaleString()} ready • ${unackedMessages.toLocaleString()} unacked`}
-					rate={
-						unackedMessages > 0 ? `${unackedMessages} in-flight` : "All ready"
+					value={isLoaded ? totalMessages.toLocaleString() : "—"}
+					subValue={
+						isLoaded
+							? `${readyMessages.toLocaleString()} ready • ${unackedMessages.toLocaleString()} unacked`
+							: "—"
 					}
-					trend={unackedMessages > 100 ? "up" : "neutral"}
+					rate={
+						isLoaded
+							? unackedMessages > 0
+								? `${unackedMessages} in-flight`
+								: "All ready"
+							: "—"
+					}
+					trend={isLoaded && unackedMessages > 100 ? "up" : "neutral"}
 					icon={<Layers className="h-5 w-5" />}
 				/>
 				<MetricCard
 					title="Publish Velocity"
-					value={`${pubRate.toFixed(1)} /s`}
-					subValue={`${(overview?.message_stats?.publish ?? 0).toLocaleString()} published total`}
-					rate={pubRate > 100 ? "High Rate" : "Normal"}
+					value={isLoaded ? `${pubRate.toFixed(1)} /s` : "—"}
+					subValue={
+						isLoaded
+							? `${(overview?.message_stats?.publish ?? 0).toLocaleString()} published total`
+							: "—"
+					}
+					rate={isLoaded ? (pubRate > 100 ? "High Rate" : "Normal") : "—"}
 					trend="up"
 					icon={<ArrowUpRight className="h-5 w-5" />}
 				/>
 				<MetricCard
 					title="Delivery & Ack Rate"
-					value={`${delRate.toFixed(1)} /s`}
-					subValue={`Ack: ${ackRate.toFixed(1)}/s`}
-					rate={delRate >= pubRate ? "Balanced" : "Lagging"}
+					value={isLoaded ? `${delRate.toFixed(1)} /s` : "—"}
+					subValue={isLoaded ? `Ack: ${ackRate.toFixed(1)}/s` : "—"}
+					rate={isLoaded ? (delRate >= pubRate ? "Balanced" : "Lagging") : "—"}
 					trend={delRate >= pubRate ? "neutral" : "down"}
 					icon={<ArrowDownRight className="h-5 w-5" />}
 				/>
 				<MetricCard
 					title="Topology Inventory"
-					value={`${overview?.object_totals?.queues ?? queues.length} Queues`}
-					subValue={`${overview?.object_totals?.connections ?? 0} Conns • ${overview?.object_totals?.channels ?? 0} Chans • ${overview?.object_totals?.exchanges ?? 0} Exch`}
-					rate={`${overview?.object_totals?.consumers ?? 0} Consumers`}
+					value={
+						isLoaded
+							? `${overview?.object_totals?.queues ?? queues.length} Queues`
+							: "—"
+					}
+					subValue={
+						isLoaded
+							? `${overview?.object_totals?.connections ?? 0} Conns • ${overview?.object_totals?.channels ?? 0} Chans • ${overview?.object_totals?.exchanges ?? 0} Exch`
+							: "—"
+					}
+					rate={
+						isLoaded ? `${overview?.object_totals?.consumers ?? 0} Consumers` : "—"
+					}
 					trend="neutral"
 					icon={<Zap className="h-5 w-5" />}
 				/>

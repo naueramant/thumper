@@ -30,7 +30,7 @@ import {
 	type SortingState,
 	useReactTable,
 } from "@tanstack/react-table";
-import { ArrowDown, ArrowUp, ArrowUpDown, Radio, Search } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Eye, Radio, Search } from "lucide-react";
 import * as React from "react";
 
 const columnHelper = createColumnHelper<Channel>();
@@ -308,11 +308,13 @@ export function ChannelsPage() {
 						params={{ name: encodeURIComponent(info.row.original.name) }}
 					>
 						<Button
-							variant="outline"
+							variant="ghost"
 							size="sm"
-							className="h-6 text-[11px] px-2"
+							className="h-6 text-[11px] px-2 text-primary hover:bg-primary/10"
+							title="Explore Channel Details"
 						>
-							Inspect
+							<Eye className="h-3 w-3 mr-1" />
+							Explore
 						</Button>
 					</Link>
 				),

@@ -42,10 +42,20 @@ cd simulator
 go run .
 ```
 
+CarrotWorks runs its whole topology, producers and consumers independently
+in a fixed set of vhosts (`/`, `carrotworks-staging`, `carrotworks-analytics`)
+so the dashboard has multiple vhosts with live traffic to show. Vhosts
+besides `/` are created automatically (and the AMQP user granted full
+permissions on them) via the management HTTP API on startup — this isn't
+configurable, since the simulator is a fixed, self-contained fictional
+platform rather than a general-purpose load generator.
+
 Environment variables:
 
 - `AMQP_URL` — broker URI (default `amqp://guest:guest@localhost:5672/`)
 - `SIMULATOR_SCALE` — multiplies publish rates; e.g. `2` doubles traffic, `0.5` halves it (default `1`)
+- `SIMULATOR_MANAGEMENT_URL` — RabbitMQ management API base URL, only used for the vhost provisioning above (default `http://<AMQP_URL host>:15672`)
+- `SIMULATOR_MANAGEMENT_USER` / `SIMULATOR_MANAGEMENT_PASSWORD` — management API credentials (default: the username/password from `AMQP_URL`)
 
 Stop with `Ctrl+C`; it shuts down all producer/consumer goroutines gracefully.
 
@@ -54,7 +64,8 @@ Stop with `Ctrl+C`; it shuts down all producer/consumer goroutines gracefully.
 ```
 simulator/
   main.go                     # wiring + graceful shutdown
-  internal/config/            # env-based config
+  internal/config/            # env-based config + fixed vhost list
+  internal/mgmt/              # HTTP management API calls to provision vhosts
   internal/faker/             # themed fake data generators
   internal/topology/          # exchange/queue/binding declarations
   internal/workload/          # producers + consumers per simulated service
