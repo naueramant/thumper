@@ -58,6 +58,18 @@ export function getRabbitMQClient(): RabbitMQClient {
 	return cachedClient;
 }
 
+export function updateStoredClusterUrl(newUrl: string): UserProfile | null {
+	const auth = getStoredAuth();
+	if (!auth) return null;
+	const updated = { ...auth, clusterUrl: newUrl };
+	if (typeof window !== "undefined") {
+		localStorage.setItem(AUTH_KEY, JSON.stringify(updated));
+	}
+	cachedClient = null;
+	cachedAuthKey = "";
+	return updated;
+}
+
 export function useAuth() {
 	const [user, setUser] = useState<UserProfile | null>(() => getStoredAuth());
 
@@ -96,11 +108,21 @@ export function useAuth() {
 		cachedClient = null;
 	};
 
+	const updateClusterUrl = (newUrl: string) => {
+		setUser((prev) => {
+			if (!prev) return null;
+			return { ...prev, clusterUrl: newUrl };
+		});
+		cachedClient = null;
+		cachedAuthKey = "";
+	};
+
 	return {
 		user,
 		isAuthenticated: !!user,
 		login,
 		logout,
+		updateClusterUrl,
 	};
 }
 

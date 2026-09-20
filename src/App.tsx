@@ -1,5 +1,6 @@
 import { ConfirmDialogProvider } from "@/components/ConfirmDialog/index.tsx";
 import { Toaster } from "@/components/ui/toast/index.tsx";
+import { ConnectionStatusProvider } from "@/contexts/ConnectionStatusContext.tsx";
 import { RefreshIntervalProvider } from "@/contexts/RefreshIntervalContext.tsx";
 import { VHostProvider } from "@/contexts/VHostContext.tsx";
 import { router } from "@/router/index.tsx";
@@ -13,6 +14,9 @@ const queryClient = new QueryClient({
 			// Disabled to prevent all active queries firing simultaneously when the
 			// user switches browser tabs back to the app, which caused fetch storms.
 			refetchOnWindowFocus: false,
+			// Disable retries so connection loss is detected immediately instead of
+			// waiting through 3 exponential backoff retry cycles.
+			retry: false,
 		},
 	},
 });
@@ -20,14 +24,16 @@ const queryClient = new QueryClient({
 function App() {
 	return (
 		<QueryClientProvider client={queryClient}>
-			<RefreshIntervalProvider>
-				<VHostProvider>
-					<ConfirmDialogProvider>
-						<RouterProvider router={router} />
-						<Toaster />
-					</ConfirmDialogProvider>
-				</VHostProvider>
-			</RefreshIntervalProvider>
+			<ConnectionStatusProvider>
+				<RefreshIntervalProvider>
+					<VHostProvider>
+						<ConfirmDialogProvider>
+							<RouterProvider router={router} />
+							<Toaster />
+						</ConfirmDialogProvider>
+					</VHostProvider>
+				</RefreshIntervalProvider>
+			</ConnectionStatusProvider>
 		</QueryClientProvider>
 	);
 }

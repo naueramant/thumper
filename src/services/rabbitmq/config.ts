@@ -60,7 +60,7 @@ export function resolveConfig(options?: RabbitMQClientOptions): ResolvedRabbitMQ
     username: options?.username ?? (options?.token ? undefined : 'guest'),
     password: options?.password ?? (options?.token ? undefined : 'guest'),
     token: options?.token,
-    timeoutMs: options?.timeoutMs ?? 30000,
+    timeoutMs: options?.timeoutMs ?? 10000,
     headers: options?.headers ?? {},
     fetch: options?.fetch ?? (typeof globalThis !== 'undefined' ? globalThis.fetch.bind(globalThis) : fetch),
   };

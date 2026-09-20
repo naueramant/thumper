@@ -19,7 +19,10 @@ import {
 	useRabbitMutations,
 	useRabbitQueues,
 } from "@/hooks/useRabbitMQ/index.ts";
-import { EXCHANGE_TYPE_DESCRIPTIONS, formatRate } from "@/services/rabbitmq/utils.ts";
+import {
+	EXCHANGE_TYPE_DESCRIPTIONS,
+	formatRate,
+} from "@/services/rabbitmq/utils.ts";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import {
 	AlertCircle,
@@ -735,4 +738,3 @@ export function ExchangeDetailPage() {
 		</div>
 	);
 }
-

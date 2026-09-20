@@ -179,7 +179,8 @@ export function QueueDetailPage() {
 	// Confirmation Modals
 	const [showPurgeConfirm, setShowPurgeConfirm] = React.useState(false);
 	const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
-	const [showMoveMessagesDialog, setShowMoveMessagesDialog] = React.useState(false);
+	const [showMoveMessagesDialog, setShowMoveMessagesDialog] =
+		React.useState(false);
 	const { data: isShovelEnabled = false } = useRabbitShovelPlugin();
 
 	// Auto-fetch messages on mount or when queue updates
@@ -399,7 +400,10 @@ export function QueueDetailPage() {
 			) : (
 				<div className="space-y-6 pb-16">
 					<Breadcrumbs>
-						<Link to="/queues" className="hover:text-foreground transition-colors">
+						<Link
+							to="/queues"
+							className="hover:text-foreground transition-colors"
+						>
 							Queues &amp; Streams
 						</Link>
 						<ChevronRight className="h-3 w-3 text-muted-foreground/50" />
@@ -483,599 +487,609 @@ export function QueueDetailPage() {
 							</div>
 						</div>
 
-				{/* Header Action Buttons */}
-				<div className="flex items-center gap-2">
-					<Button
-						variant="outline"
-						size="sm"
-						onClick={() => {
-							refetchQueue();
-							fetchMessages();
-						}}
-						className="h-8 text-xs font-mono"
-						disabled={isFetchingMessages}
-					>
-						<RefreshCw
-							className={`h-3.5 w-3.5 mr-1.5 ${isFetchingMessages ? "animate-spin" : ""}`}
-						/>
-						Refresh
-					</Button>
-
-					{isShovelEnabled && (
-						<Button
-							variant="outline"
-							size="sm"
-							onClick={() => setShowMoveMessagesDialog(true)}
-							className="h-8 text-xs text-primary border-primary/30 hover:bg-primary/10"
-							title="Move messages from this queue to another using the Shovel plugin"
-						>
-							<Shovel className="h-3.5 w-3.5 mr-1.5" />
-							Move Messages
-						</Button>
-					)}
-
-					<Button
-						variant="outline"
-						size="sm"
-						onClick={() => setShowPurgeConfirm(true)}
-						className="h-8 text-xs text-amber-500 border-amber-500/30 hover:bg-amber-500/10"
-					>
-						<Eraser className="h-3.5 w-3.5 mr-1.5" />
-						Purge
-					</Button>
-
-					<Button
-						variant="outline"
-						size="sm"
-						onClick={() => setShowDeleteConfirm(true)}
-						className="h-8 text-xs text-destructive border-destructive/30 hover:bg-destructive/10"
-					>
-						<Trash2 className="h-3.5 w-3.5 mr-1" />
-						Delete
-					</Button>
-				</div>
-			</div>
-
-			{/* Top Metric Cards — always visible */}
-			<div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-				<Card className="border border-border/80 bg-card/60">
-					<CardContent className="p-4 space-y-1">
-						<span className="text-[11px] font-medium text-muted-foreground">
-							Total Messages
-						</span>
-						<div className="flex items-baseline justify-between">
-							<span className="text-2xl font-bold font-mono text-foreground">
-								{formatNumber(totalMessages)}
-							</span>
-							<span className="text-[11px] text-muted-foreground font-mono">
-								{readyMessages} ready • {unackedMessages} unacked
-							</span>
-						</div>
-						<div className="w-full bg-muted/40 h-1.5 rounded-full overflow-hidden flex">
-							<div
-								className="bg-primary h-full transition-all"
-								style={{
-									width: `${totalMessages ? Math.min(100, (readyMessages / totalMessages) * 100) : 0}%`,
+						{/* Header Action Buttons */}
+						<div className="flex items-center gap-2">
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={() => {
+									refetchQueue();
+									fetchMessages();
 								}}
-							/>
-							<div
-								className="bg-amber-500 h-full transition-all"
-								style={{
-									width: `${totalMessages ? Math.min(100, (unackedMessages / totalMessages) * 100) : 0}%`,
-								}}
-							/>
-						</div>
-					</CardContent>
-				</Card>
+								className="h-8 text-xs font-mono"
+								disabled={isFetchingMessages}
+							>
+								<RefreshCw
+									className={`h-3.5 w-3.5 mr-1.5 ${isFetchingMessages ? "animate-spin" : ""}`}
+								/>
+								Refresh
+							</Button>
 
-				<Card className="border border-border/80 bg-card/60">
-					<CardContent className="p-4 space-y-1">
-						<span className="text-[11px] font-medium text-muted-foreground">
-							Throughput Velocity
-						</span>
-						<div className="flex items-baseline justify-between">
-							<span className="text-2xl font-bold font-mono text-primary">
-								{formatRate(pubRate)}
-							</span>
-							<span className="text-[11px] text-muted-foreground font-mono">
-								ingress
-							</span>
-						</div>
-						<div className="text-[11px] text-muted-foreground font-mono flex items-center justify-between">
-							<span>Egress:</span>
-							<span className="text-foreground">{formatRate(deliverRate)}</span>
-						</div>
-					</CardContent>
-				</Card>
-
-				<Card className="border border-border/80 bg-card/60">
-					<CardContent className="p-4 space-y-1">
-						<span className="text-[11px] font-medium text-muted-foreground">
-							Active Consumers
-						</span>
-						<div className="flex items-baseline justify-between">
-							<span className="text-2xl font-bold font-mono text-foreground">
-								{consumerCount}
-							</span>
-							<Badge variant="outline" className="text-[10px] font-mono">
-								{consumerCount > 0 ? "Receiving" : "No Listeners"}
-							</Badge>
-						</div>
-						<div className="text-[11px] text-muted-foreground font-mono flex items-center justify-between">
-							<span>Consumer tag:</span>
-							<span className="text-foreground truncate max-w-[120px]">
-								{consumerCount > 0 ? "connected" : "none"}
-							</span>
-						</div>
-					</CardContent>
-				</Card>
-
-				<Card className="border border-border/80 bg-card/60">
-					<CardContent className="p-4 space-y-1">
-						<span className="text-[11px] font-medium text-muted-foreground">
-							Memory Footprint
-						</span>
-						<div className="flex items-baseline justify-between">
-							<span className="text-2xl font-bold font-mono text-foreground">
-								{formatBytes(ramBytes)}
-							</span>
-							<span className="text-[11px] text-muted-foreground font-mono">
-								RAM
-							</span>
-						</div>
-						<div className="text-[11px] text-muted-foreground font-mono flex items-center justify-between">
-							<span>Auto-delete:</span>
-							<span className="text-foreground">
-								{queue?.auto_delete ? "Yes" : "No"}
-							</span>
-						</div>
-					</CardContent>
-				</Card>
-			</div>
-
-			{/* Tab Bar */}
-			<div className="border-b border-border/60">
-				<div className="flex items-center gap-0.5">
-					{tabs.map((tab) => (
-						<button
-							key={tab.id}
-							type="button"
-							onClick={() => setActiveTab(tab.id)}
-							className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium transition-all duration-150 border-b-2 -mb-px cursor-pointer ${
-								activeTab === tab.id
-									? "border-primary text-primary"
-									: "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
-							}`}
-						>
-							{tab.icon}
-							{tab.label}
-							{tab.id === "bindings" && bindings.length > 0 && (
-								<span className="ml-0.5 px-1.5 py-0.5 rounded-full bg-muted text-[10px] font-mono">
-									{bindings.length}
-								</span>
+							{isShovelEnabled && (
+								<Button
+									variant="outline"
+									size="sm"
+									onClick={() => setShowMoveMessagesDialog(true)}
+									className="h-8 text-xs text-primary border-primary/30 hover:bg-primary/10"
+									title="Move messages from this queue to another using the Shovel plugin"
+								>
+									<Shovel className="h-3.5 w-3.5 mr-1.5" />
+									Move Messages
+								</Button>
 							)}
-							{tab.id === "messages" && messages.length > 0 && (
-								<span className="ml-0.5 px-1.5 py-0.5 rounded-full bg-muted text-[10px] font-mono">
-									{messages.length}
-								</span>
-							)}
-						</button>
-					))}
-				</div>
-			</div>
 
-			{/* Tab Content */}
-			<div className="animate-in fade-in duration-150">
-				{/* ── Messages Tab ── */}
-				{activeTab === "messages" && (
-					<Card className="border border-border/80">
-						<CardHeader className="pb-3 border-b border-border/50">
-							<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-								<div>
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={() => setShowPurgeConfirm(true)}
+								className="h-8 text-xs text-amber-500 border-amber-500/30 hover:bg-amber-500/10"
+							>
+								<Eraser className="h-3.5 w-3.5 mr-1.5" />
+								Purge
+							</Button>
+
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={() => setShowDeleteConfirm(true)}
+								className="h-8 text-xs text-destructive border-destructive/30 hover:bg-destructive/10"
+							>
+								<Trash2 className="h-3.5 w-3.5 mr-1" />
+								Delete
+							</Button>
+						</div>
+					</div>
+
+					{/* Top Metric Cards — always visible */}
+					<div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+						<Card className="border border-border/80 bg-card/60">
+							<CardContent className="p-4 space-y-1">
+								<span className="text-[11px] font-medium text-muted-foreground">
+									Total Messages
+								</span>
+								<div className="flex items-baseline justify-between">
+									<span className="text-2xl font-bold font-mono text-foreground">
+										{formatNumber(totalMessages)}
+									</span>
+									<span className="text-[11px] text-muted-foreground font-mono">
+										{readyMessages} ready • {unackedMessages} unacked
+									</span>
+								</div>
+								<div className="w-full bg-muted/40 h-1.5 rounded-full overflow-hidden flex">
+									<div
+										className="bg-primary h-full transition-all"
+										style={{
+											width: `${totalMessages ? Math.min(100, (readyMessages / totalMessages) * 100) : 0}%`,
+										}}
+									/>
+									<div
+										className="bg-amber-500 h-full transition-all"
+										style={{
+											width: `${totalMessages ? Math.min(100, (unackedMessages / totalMessages) * 100) : 0}%`,
+										}}
+									/>
+								</div>
+							</CardContent>
+						</Card>
+
+						<Card className="border border-border/80 bg-card/60">
+							<CardContent className="p-4 space-y-1">
+								<span className="text-[11px] font-medium text-muted-foreground">
+									Throughput Velocity
+								</span>
+								<div className="flex items-baseline justify-between">
+									<span className="text-2xl font-bold font-mono text-primary">
+										{formatRate(pubRate)}
+									</span>
+									<span className="text-[11px] text-muted-foreground font-mono">
+										ingress
+									</span>
+								</div>
+								<div className="text-[11px] text-muted-foreground font-mono flex items-center justify-between">
+									<span>Egress:</span>
+									<span className="text-foreground">
+										{formatRate(deliverRate)}
+									</span>
+								</div>
+							</CardContent>
+						</Card>
+
+						<Card className="border border-border/80 bg-card/60">
+							<CardContent className="p-4 space-y-1">
+								<span className="text-[11px] font-medium text-muted-foreground">
+									Active Consumers
+								</span>
+								<div className="flex items-baseline justify-between">
+									<span className="text-2xl font-bold font-mono text-foreground">
+										{consumerCount}
+									</span>
+									<Badge variant="outline" className="text-[10px] font-mono">
+										{consumerCount > 0 ? "Receiving" : "No Listeners"}
+									</Badge>
+								</div>
+								<div className="text-[11px] text-muted-foreground font-mono flex items-center justify-between">
+									<span>Consumer tag:</span>
+									<span className="text-foreground truncate max-w-[120px]">
+										{consumerCount > 0 ? "connected" : "none"}
+									</span>
+								</div>
+							</CardContent>
+						</Card>
+
+						<Card className="border border-border/80 bg-card/60">
+							<CardContent className="p-4 space-y-1">
+								<span className="text-[11px] font-medium text-muted-foreground">
+									Memory Footprint
+								</span>
+								<div className="flex items-baseline justify-between">
+									<span className="text-2xl font-bold font-mono text-foreground">
+										{formatBytes(ramBytes)}
+									</span>
+									<span className="text-[11px] text-muted-foreground font-mono">
+										RAM
+									</span>
+								</div>
+								<div className="text-[11px] text-muted-foreground font-mono flex items-center justify-between">
+									<span>Auto-delete:</span>
+									<span className="text-foreground">
+										{queue?.auto_delete ? "Yes" : "No"}
+									</span>
+								</div>
+							</CardContent>
+						</Card>
+					</div>
+
+					{/* Tab Bar */}
+					<div className="border-b border-border/60">
+						<div className="flex items-center gap-0.5">
+							{tabs.map((tab) => (
+								<button
+									key={tab.id}
+									type="button"
+									onClick={() => setActiveTab(tab.id)}
+									className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium transition-all duration-150 border-b-2 -mb-px cursor-pointer ${
+										activeTab === tab.id
+											? "border-primary text-primary"
+											: "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
+									}`}
+								>
+									{tab.icon}
+									{tab.label}
+									{tab.id === "bindings" && bindings.length > 0 && (
+										<span className="ml-0.5 px-1.5 py-0.5 rounded-full bg-muted text-[10px] font-mono">
+											{bindings.length}
+										</span>
+									)}
+									{tab.id === "messages" && messages.length > 0 && (
+										<span className="ml-0.5 px-1.5 py-0.5 rounded-full bg-muted text-[10px] font-mono">
+											{messages.length}
+										</span>
+									)}
+								</button>
+							))}
+						</div>
+					</div>
+
+					{/* Tab Content */}
+					<div className="animate-in fade-in duration-150">
+						{/* ── Messages Tab ── */}
+						{activeTab === "messages" && (
+							<Card className="border border-border/80">
+								<CardHeader className="pb-3 border-b border-border/50">
+									<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+										<div>
+											<CardTitle className="text-base flex items-center gap-2">
+												<FileCode className="h-4 w-4 text-primary" />
+												Message Explorer
+												<Badge variant="outline" className="font-mono text-xs">
+													{messages.length} peeked
+												</Badge>
+											</CardTitle>
+											<CardDescription className="text-xs">
+												Inspect the first <i>N</i> messages currently buffered
+												in the queue with non-destructive safe requeue.
+											</CardDescription>
+										</div>
+
+										{/* Explorer Controls */}
+										<div className="flex flex-wrap items-center gap-2">
+											<div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono">
+												<span>Mode:</span>
+												<select
+													value={peekAckMode}
+													onChange={(e) =>
+														setPeekAckMode(e.target.value as AckMode)
+													}
+													className="h-7 rounded border border-border bg-background px-2 text-[11px] font-mono focus:outline-none focus:border-primary"
+												>
+													<option value="ack_requeue_true">
+														Safe Peek (Requeue)
+													</option>
+													<option value="ack_requeue_false">
+														Automatic Ack (Dequeue)
+													</option>
+													<option value="reject_requeue_false">
+														Reject (Drop/DLQ)
+													</option>
+												</select>
+											</div>
+
+											<div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono">
+												<span>Count:</span>
+												<select
+													value={peekCount}
+													onChange={(e) => setPeekCount(Number(e.target.value))}
+													className="h-7 rounded border border-border bg-background px-2 text-[11px] font-mono focus:outline-none focus:border-primary"
+												>
+													<option value={5}>5 msgs</option>
+													<option value={10}>10 msgs</option>
+													<option value={25}>25 msgs</option>
+													<option value={50}>50 msgs</option>
+													<option value={100}>100 msgs</option>
+												</select>
+											</div>
+
+											<Button
+												variant="outline"
+												size="sm"
+												onClick={() => fetchMessages(peekCount, peekAckMode)}
+												disabled={isFetchingMessages}
+												className="h-7 text-xs font-mono"
+											>
+												<RefreshCw
+													className={`h-3 w-3 mr-1 ${isFetchingMessages ? "animate-spin" : ""}`}
+												/>
+												Fetch
+											</Button>
+										</div>
+									</div>
+								</CardHeader>
+
+								<CardContent className="p-0">
+									{messages.length === 0 ? (
+										<div className="py-12 text-center text-xs text-muted-foreground font-mono">
+											{isFetchingMessages ? (
+												<div className="flex items-center justify-center gap-2">
+													<RefreshCw className="h-4 w-4 animate-spin text-primary" />
+													Peeking messages from queue...
+												</div>
+											) : (
+												"No messages in queue or queue is currently drained."
+											)}
+										</div>
+									) : (
+										<div className="overflow-x-auto">
+											<Table>
+												<TableHeader>
+													<TableRow className="hover:bg-transparent">
+														<TableHead className="w-12 text-[11px] font-mono">
+															#
+														</TableHead>
+														<TableHead className="text-[11px]">
+															Payload Snippet
+														</TableHead>
+														<TableHead className="text-[11px] font-mono">
+															Routing Key
+														</TableHead>
+														<TableHead className="text-[11px] font-mono">
+															Exchange
+														</TableHead>
+														<TableHead className="text-[11px] font-mono">
+															Size
+														</TableHead>
+														<TableHead className="text-[11px]">
+															Status
+														</TableHead>
+														<TableHead className="text-right text-[11px]">
+															Actions
+														</TableHead>
+													</TableRow>
+												</TableHeader>
+												<TableBody>
+													{messages.map((msg, idx) => (
+														<TableRow key={idx} className="hover:bg-muted/30">
+															<TableCell className="font-mono text-xs text-muted-foreground">
+																{idx + 1}
+															</TableCell>
+															<TableCell className="max-w-md">
+																<div
+																	onClick={() => setSelectedMessage(msg)}
+																	className="cursor-pointer font-mono text-xs text-foreground/90 bg-muted/40 hover:bg-muted/70 px-2 py-1 rounded border border-border/40 truncate max-w-lg transition-colors flex items-center gap-1.5"
+																	title="Click to inspect full payload"
+																>
+																	{tryParseJson(msg.payload).isJson && (
+																		<span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-1 py-0.5 rounded flex-shrink-0">
+																			JSON
+																		</span>
+																	)}
+																	<span className="truncate">
+																		{msg.payload}
+																	</span>
+																</div>
+															</TableCell>
+															<TableCell className="font-mono text-xs text-primary">
+																{msg.routing_key || "-"}
+															</TableCell>
+															<TableCell className="font-mono text-xs text-muted-foreground">
+																{msg.exchange || "(default)"}
+															</TableCell>
+															<TableCell className="font-mono text-xs text-muted-foreground">
+																{formatBytes(msg.payload_bytes)}
+															</TableCell>
+															<TableCell>
+																{msg.redelivered ? (
+																	<Badge
+																		variant="outline"
+																		className="text-[10px] border-amber-500/30 text-amber-500"
+																	>
+																		Redelivered
+																	</Badge>
+																) : (
+																	<Badge
+																		variant="outline"
+																		className="text-[10px] text-muted-foreground"
+																	>
+																		Fresh
+																	</Badge>
+																)}
+															</TableCell>
+															<TableCell className="text-right">
+																<div className="flex items-center justify-end gap-1">
+																	<Button
+																		variant="ghost"
+																		size="sm"
+																		onClick={() => setSelectedMessage(msg)}
+																		className="h-7 px-2 text-xs hover:text-primary"
+																		title="Inspect message payload & properties"
+																	>
+																		<Eye className="h-3.5 w-3.5 mr-1" />
+																		Inspect
+																	</Button>
+																	<Button
+																		variant="ghost"
+																		size="sm"
+																		onClick={() => handleDuplicateMessage(msg)}
+																		className="h-7 px-2 text-xs hover:text-primary"
+																		title="Clone and re-publish this message"
+																	>
+																		<CopyPlus className="h-3.5 w-3.5 mr-1 text-emerald-500" />
+																		Duplicate
+																	</Button>
+																	<Button
+																		variant="ghost"
+																		size="sm"
+																		onClick={() =>
+																			copyToClipboard(msg.payload, idx)
+																		}
+																		className="h-7 w-7 p-0"
+																		title="Copy payload"
+																	>
+																		{copiedMessageIndex === idx ? (
+																			<Check className="h-3.5 w-3.5 text-emerald-500" />
+																		) : (
+																			<Copy className="h-3.5 w-3.5 text-muted-foreground" />
+																		)}
+																	</Button>
+																</div>
+															</TableCell>
+														</TableRow>
+													))}
+												</TableBody>
+											</Table>
+										</div>
+									)}
+								</CardContent>
+							</Card>
+						)}
+
+						{/* ── Topology Tab ── */}
+						{activeTab === "topology" && (
+							<Card className="border-border bg-card/60 backdrop-blur-sm overflow-hidden">
+								<CardHeader className="p-4 pb-2 border-b border-border/60">
+									<div className="flex items-center justify-between">
+										<div className="flex items-center gap-2">
+											<Network className="h-4 w-4 text-primary" />
+											<CardTitle className="text-base font-mono">
+												Topology &amp; Inbound Routing Flow
+											</CardTitle>
+										</div>
+										<span className="text-[11px] font-mono text-muted-foreground">
+											{topologyNodes.length} Nodes &bull; {topologyEdges.length}{" "}
+											Active Bindings
+										</span>
+									</div>
+									<CardDescription className="text-xs">
+										Visual topology map showing upstream exchanges routing into
+										this queue and connected consumer listeners.
+									</CardDescription>
+								</CardHeader>
+								<CardContent className="p-0">
+									<TopologyFlow
+										nodes={topologyNodes}
+										edges={topologyEdges}
+										height="400px"
+										showMinimap={false}
+										className="rounded-t-none border-0"
+									/>
+								</CardContent>
+							</Card>
+						)}
+
+						{/* ── Publish Tab ── */}
+						{activeTab === "publish" && (
+							<Card
+								id="publish-message-card"
+								className="border border-border/80"
+							>
+								<CardHeader className="pb-3 border-b border-border/50">
+									<div className="flex items-center justify-between">
+										<div>
+											<CardTitle className="text-base flex items-center gap-2">
+												<Send className="h-4 w-4 text-primary" />
+												Publish Message to Queue
+											</CardTitle>
+											<CardDescription className="text-xs">
+												Inject a message directly into this queue via the
+												default direct exchange.
+											</CardDescription>
+										</div>
+										{pubSuccess && (
+											<Badge
+												variant="outline"
+												className="border-emerald-500/30 text-emerald-400 bg-emerald-500/10 font-mono text-xs"
+											>
+												<CheckCircle2 className="h-3 w-3 mr-1" /> Queued!
+											</Badge>
+										)}
+									</div>
+								</CardHeader>
+								<CardContent className="p-4 space-y-3">
+									<form onSubmit={handlePublish} className="space-y-3">
+										<div className="space-y-1">
+											<label className="text-xs font-medium text-muted-foreground">
+												Routing Key
+											</label>
+											<input
+												type="text"
+												value={pubRoutingKey}
+												onChange={(e) => setPubRoutingKey(e.target.value)}
+												placeholder={queueName}
+												className="h-8 w-full rounded border border-border bg-muted/20 px-2.5 text-xs font-mono focus:border-primary focus:outline-none"
+											/>
+										</div>
+
+										<PayloadEditor
+											value={pubPayload}
+											onChange={setPubPayload}
+											label="Payload (JSON or Raw Text)"
+											rows={7}
+											placeholder='{"message": "hello"}'
+										/>
+
+										<Button
+											type="submit"
+											disabled={isPublishing || !pubPayload.trim()}
+											className="w-full h-8 text-xs font-semibold"
+										>
+											{isPublishing ? (
+												<>
+													<RefreshCw className="h-3.5 w-3.5 mr-1.5 animate-spin" />{" "}
+													Publishing...
+												</>
+											) : (
+												<>
+													<Send className="h-3.5 w-3.5 mr-1.5" /> Publish
+													Message
+												</>
+											)}
+										</Button>
+									</form>
+								</CardContent>
+							</Card>
+						)}
+
+						{/* ── Bindings Tab ── */}
+						{activeTab === "bindings" && (
+							<Card className="border border-border/80">
+								<CardHeader className="pb-3 border-b border-border/50">
 									<CardTitle className="text-base flex items-center gap-2">
-										<FileCode className="h-4 w-4 text-primary" />
-										Message Explorer
+										<LinkIcon className="h-4 w-4 text-primary" />
+										Inbound Bindings
 										<Badge variant="outline" className="font-mono text-xs">
-											{messages.length} peeked
+											{bindings.length}
 										</Badge>
 									</CardTitle>
 									<CardDescription className="text-xs">
-										Inspect the first <i>N</i> messages currently buffered in
-										the queue with non-destructive safe requeue.
+										Upstream exchanges delivering messages into this queue based
+										on routing rules.
 									</CardDescription>
-								</div>
-
-								{/* Explorer Controls */}
-								<div className="flex flex-wrap items-center gap-2">
-									<div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono">
-										<span>Mode:</span>
-										<select
-											value={peekAckMode}
-											onChange={(e) =>
-												setPeekAckMode(e.target.value as AckMode)
-											}
-											className="h-7 rounded border border-border bg-background px-2 text-[11px] font-mono focus:outline-none focus:border-primary"
-										>
-											<option value="ack_requeue_true">
-												Safe Peek (Requeue)
-											</option>
-											<option value="ack_requeue_false">
-												Automatic Ack (Dequeue)
-											</option>
-											<option value="reject_requeue_false">
-												Reject (Drop/DLQ)
-											</option>
-										</select>
-									</div>
-
-									<div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono">
-										<span>Count:</span>
-										<select
-											value={peekCount}
-											onChange={(e) => setPeekCount(Number(e.target.value))}
-											className="h-7 rounded border border-border bg-background px-2 text-[11px] font-mono focus:outline-none focus:border-primary"
-										>
-											<option value={5}>5 msgs</option>
-											<option value={10}>10 msgs</option>
-											<option value={25}>25 msgs</option>
-											<option value={50}>50 msgs</option>
-											<option value={100}>100 msgs</option>
-										</select>
-									</div>
-
-									<Button
-										variant="outline"
-										size="sm"
-										onClick={() => fetchMessages(peekCount, peekAckMode)}
-										disabled={isFetchingMessages}
-										className="h-7 text-xs font-mono"
-									>
-										<RefreshCw
-											className={`h-3 w-3 mr-1 ${isFetchingMessages ? "animate-spin" : ""}`}
-										/>
-										Fetch
-									</Button>
-								</div>
-							</div>
-						</CardHeader>
-
-						<CardContent className="p-0">
-							{messages.length === 0 ? (
-								<div className="py-12 text-center text-xs text-muted-foreground font-mono">
-									{isFetchingMessages ? (
-										<div className="flex items-center justify-center gap-2">
-											<RefreshCw className="h-4 w-4 animate-spin text-primary" />
-											Peeking messages from queue...
-										</div>
-									) : (
-										"No messages in queue or queue is currently drained."
-									)}
-								</div>
-							) : (
-								<div className="overflow-x-auto">
-									<Table>
-										<TableHeader>
-											<TableRow className="hover:bg-transparent">
-												<TableHead className="w-12 text-[11px] font-mono">
-													#
-												</TableHead>
-												<TableHead className="text-[11px]">
-													Payload Snippet
-												</TableHead>
-												<TableHead className="text-[11px] font-mono">
-													Routing Key
-												</TableHead>
-												<TableHead className="text-[11px] font-mono">
-													Exchange
-												</TableHead>
-												<TableHead className="text-[11px] font-mono">
-													Size
-												</TableHead>
-												<TableHead className="text-[11px]">Status</TableHead>
-												<TableHead className="text-right text-[11px]">
-													Actions
-												</TableHead>
-											</TableRow>
-										</TableHeader>
-										<TableBody>
-											{messages.map((msg, idx) => (
-												<TableRow key={idx} className="hover:bg-muted/30">
-													<TableCell className="font-mono text-xs text-muted-foreground">
-														{idx + 1}
-													</TableCell>
-													<TableCell className="max-w-md">
-														<div
-															onClick={() => setSelectedMessage(msg)}
-															className="cursor-pointer font-mono text-xs text-foreground/90 bg-muted/40 hover:bg-muted/70 px-2 py-1 rounded border border-border/40 truncate max-w-lg transition-colors flex items-center gap-1.5"
-															title="Click to inspect full payload"
-														>
-															{tryParseJson(msg.payload).isJson && (
-																<span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-1 py-0.5 rounded flex-shrink-0">
-																	JSON
-																</span>
-															)}
-															<span className="truncate">{msg.payload}</span>
-														</div>
-													</TableCell>
-													<TableCell className="font-mono text-xs text-primary">
-														{msg.routing_key || "-"}
-													</TableCell>
-													<TableCell className="font-mono text-xs text-muted-foreground">
-														{msg.exchange || "(default)"}
-													</TableCell>
-													<TableCell className="font-mono text-xs text-muted-foreground">
-														{formatBytes(msg.payload_bytes)}
-													</TableCell>
-													<TableCell>
-														{msg.redelivered ? (
-															<Badge
-																variant="outline"
-																className="text-[10px] border-amber-500/30 text-amber-500"
-															>
-																Redelivered
-															</Badge>
-														) : (
-															<Badge
-																variant="outline"
-																className="text-[10px] text-muted-foreground"
-															>
-																Fresh
-															</Badge>
-														)}
-													</TableCell>
-													<TableCell className="text-right">
-														<div className="flex items-center justify-end gap-1">
-															<Button
-																variant="ghost"
-																size="sm"
-																onClick={() => setSelectedMessage(msg)}
-																className="h-7 px-2 text-xs hover:text-primary"
-																title="Inspect message payload & properties"
-															>
-																<Eye className="h-3.5 w-3.5 mr-1" />
-																Inspect
-															</Button>
-															<Button
-																variant="ghost"
-																size="sm"
-																onClick={() => handleDuplicateMessage(msg)}
-																className="h-7 px-2 text-xs hover:text-primary"
-																title="Clone and re-publish this message"
-															>
-																<CopyPlus className="h-3.5 w-3.5 mr-1 text-emerald-500" />
-																Duplicate
-															</Button>
-															<Button
-																variant="ghost"
-																size="sm"
-																onClick={() =>
-																	copyToClipboard(msg.payload, idx)
-																}
-																className="h-7 w-7 p-0"
-																title="Copy payload"
-															>
-																{copiedMessageIndex === idx ? (
-																	<Check className="h-3.5 w-3.5 text-emerald-500" />
-																) : (
-																	<Copy className="h-3.5 w-3.5 text-muted-foreground" />
-																)}
-															</Button>
-														</div>
-													</TableCell>
-												</TableRow>
-											))}
-										</TableBody>
-									</Table>
-								</div>
-							)}
-						</CardContent>
-					</Card>
-				)}
-
-				{/* ── Topology Tab ── */}
-				{activeTab === "topology" && (
-					<Card className="border-border bg-card/60 backdrop-blur-sm overflow-hidden">
-						<CardHeader className="p-4 pb-2 border-b border-border/60">
-							<div className="flex items-center justify-between">
-								<div className="flex items-center gap-2">
-									<Network className="h-4 w-4 text-primary" />
-									<CardTitle className="text-base font-mono">
-										Topology &amp; Inbound Routing Flow
-									</CardTitle>
-								</div>
-								<span className="text-[11px] font-mono text-muted-foreground">
-									{topologyNodes.length} Nodes &bull; {topologyEdges.length}{" "}
-									Active Bindings
-								</span>
-							</div>
-							<CardDescription className="text-xs">
-								Visual topology map showing upstream exchanges routing into this
-								queue and connected consumer listeners.
-							</CardDescription>
-						</CardHeader>
-						<CardContent className="p-0">
-							<TopologyFlow
-								nodes={topologyNodes}
-								edges={topologyEdges}
-								height="400px"
-								showMinimap={false}
-								className="rounded-t-none border-0"
-							/>
-						</CardContent>
-					</Card>
-				)}
-
-				{/* ── Publish Tab ── */}
-				{activeTab === "publish" && (
-					<Card id="publish-message-card" className="border border-border/80">
-						<CardHeader className="pb-3 border-b border-border/50">
-							<div className="flex items-center justify-between">
-								<div>
-									<CardTitle className="text-base flex items-center gap-2">
-										<Send className="h-4 w-4 text-primary" />
-										Publish Message to Queue
-									</CardTitle>
-									<CardDescription className="text-xs">
-										Inject a message directly into this queue via the default
-										direct exchange.
-									</CardDescription>
-								</div>
-								{pubSuccess && (
-									<Badge
-										variant="outline"
-										className="border-emerald-500/30 text-emerald-400 bg-emerald-500/10 font-mono text-xs"
-									>
-										<CheckCircle2 className="h-3 w-3 mr-1" /> Queued!
-									</Badge>
-								)}
-							</div>
-						</CardHeader>
-						<CardContent className="p-4 space-y-3">
-							<form onSubmit={handlePublish} className="space-y-3">
-								<div className="space-y-1">
-									<label className="text-xs font-medium text-muted-foreground">
-										Routing Key
-									</label>
-									<input
-										type="text"
-										value={pubRoutingKey}
-										onChange={(e) => setPubRoutingKey(e.target.value)}
-										placeholder={queueName}
-										className="h-8 w-full rounded border border-border bg-muted/20 px-2.5 text-xs font-mono focus:border-primary focus:outline-none"
-									/>
-								</div>
-
-								<PayloadEditor
-									value={pubPayload}
-									onChange={setPubPayload}
-									label="Payload (JSON or Raw Text)"
-									rows={7}
-									placeholder='{"message": "hello"}'
-								/>
-
-								<Button
-									type="submit"
-									disabled={isPublishing || !pubPayload.trim()}
-									className="w-full h-8 text-xs font-semibold"
-								>
-									{isPublishing ? (
-										<>
-											<RefreshCw className="h-3.5 w-3.5 mr-1.5 animate-spin" />{" "}
-											Publishing...
-										</>
-									) : (
-										<>
-											<Send className="h-3.5 w-3.5 mr-1.5" /> Publish Message
-										</>
-									)}
-								</Button>
-							</form>
-						</CardContent>
-					</Card>
-				)}
-
-				{/* ── Bindings Tab ── */}
-				{activeTab === "bindings" && (
-					<Card className="border border-border/80">
-						<CardHeader className="pb-3 border-b border-border/50">
-							<CardTitle className="text-base flex items-center gap-2">
-								<LinkIcon className="h-4 w-4 text-primary" />
-								Inbound Bindings
-								<Badge variant="outline" className="font-mono text-xs">
-									{bindings.length}
-								</Badge>
-							</CardTitle>
-							<CardDescription className="text-xs">
-								Upstream exchanges delivering messages into this queue based on
-								routing rules.
-							</CardDescription>
-						</CardHeader>
-						<CardContent className="p-4 space-y-4">
-							{/* Bindings List */}
-							<div className="space-y-2 max-h-72 overflow-y-auto">
-								{bindings.length === 0 ? (
-									<div className="text-xs text-muted-foreground font-mono py-4 text-center">
-										No bindings configured for this queue.
-									</div>
-								) : (
-									bindings.map((b, idx) => (
-										<div
-											key={idx}
-											className="flex items-center justify-between p-2 rounded border border-border/60 bg-muted/20 text-xs font-mono"
-										>
-											<div className="flex items-center gap-2 truncate">
-												<span className="text-muted-foreground">From:</span>
-												<span className="font-semibold text-foreground">
-													{b.source || "(default)"}
-												</span>
-												<span className="text-muted-foreground">key:</span>
-												<Badge
-													variant="outline"
-													className="text-[10px] text-primary"
-												>
-													{b.routing_key || "(empty)"}
-												</Badge>
+								</CardHeader>
+								<CardContent className="p-4 space-y-4">
+									{/* Bindings List */}
+									<div className="space-y-2 max-h-72 overflow-y-auto">
+										{bindings.length === 0 ? (
+											<div className="text-xs text-muted-foreground font-mono py-4 text-center">
+												No bindings configured for this queue.
 											</div>
-
-											{b.source !== "" && (
-												<Button
-													variant="ghost"
-													size="sm"
-													onClick={() =>
-														handleDeleteBinding(b.source, b.properties_key)
-													}
-													className="h-6 px-1.5 text-destructive hover:bg-destructive/10"
-													title="Unbind exchange"
+										) : (
+											bindings.map((b, idx) => (
+												<div
+													key={idx}
+													className="flex items-center justify-between p-2 rounded border border-border/60 bg-muted/20 text-xs font-mono"
 												>
-													<Unlink className="h-3.5 w-3.5" />
-												</Button>
-											)}
-										</div>
-									))
-								)}
-							</div>
+													<div className="flex items-center gap-2 truncate">
+														<span className="text-muted-foreground">From:</span>
+														<span className="font-semibold text-foreground">
+															{b.source || "(default)"}
+														</span>
+														<span className="text-muted-foreground">key:</span>
+														<Badge
+															variant="outline"
+															className="text-[10px] text-primary"
+														>
+															{b.routing_key || "(empty)"}
+														</Badge>
+													</div>
 
-							{/* Add Binding Form */}
-							<form
-								onSubmit={handleCreateBinding}
-								className="pt-2 border-t border-border/50 space-y-2"
-							>
-								<span className="text-xs font-semibold text-foreground block">
-									Bind from Exchange
-								</span>
-								<div className="grid grid-cols-2 gap-2">
-									<input
-										type="text"
-										required
-										value={bindExchange}
-										onChange={(e) => setBindExchange(e.target.value)}
-										placeholder="Source exchange (e.g. amq.direct)"
-										className="h-8 rounded border border-border bg-muted/20 px-2 text-xs font-mono focus:border-primary focus:outline-none"
-									/>
-									<input
-										type="text"
-										value={bindRoutingKey}
-										onChange={(e) => setBindRoutingKey(e.target.value)}
-										placeholder="Routing key (optional)"
-										className="h-8 rounded border border-border bg-muted/20 px-2 text-xs font-mono focus:border-primary focus:outline-none"
-									/>
-								</div>
-								<Button
-									type="submit"
-									variant="outline"
-									size="sm"
-									disabled={isBinding || !bindExchange.trim()}
-									className="w-full h-8 text-xs font-mono"
-								>
-									{isBinding ? "Binding..." : "+ Bind Exchange"}
-								</Button>
-							</form>
-						</CardContent>
-					</Card>
-				)}
-			</div>
-		</div>
-	)}
+													{b.source !== "" && (
+														<Button
+															variant="ghost"
+															size="sm"
+															onClick={() =>
+																handleDeleteBinding(b.source, b.properties_key)
+															}
+															className="h-6 px-1.5 text-destructive hover:bg-destructive/10"
+															title="Unbind exchange"
+														>
+															<Unlink className="h-3.5 w-3.5" />
+														</Button>
+													)}
+												</div>
+											))
+										)}
+									</div>
+
+									{/* Add Binding Form */}
+									<form
+										onSubmit={handleCreateBinding}
+										className="pt-2 border-t border-border/50 space-y-2"
+									>
+										<span className="text-xs font-semibold text-foreground block">
+											Bind from Exchange
+										</span>
+										<div className="grid grid-cols-2 gap-2">
+											<input
+												type="text"
+												required
+												value={bindExchange}
+												onChange={(e) => setBindExchange(e.target.value)}
+												placeholder="Source exchange (e.g. amq.direct)"
+												className="h-8 rounded border border-border bg-muted/20 px-2 text-xs font-mono focus:border-primary focus:outline-none"
+											/>
+											<input
+												type="text"
+												value={bindRoutingKey}
+												onChange={(e) => setBindRoutingKey(e.target.value)}
+												placeholder="Routing key (optional)"
+												className="h-8 rounded border border-border bg-muted/20 px-2 text-xs font-mono focus:border-primary focus:outline-none"
+											/>
+										</div>
+										<Button
+											type="submit"
+											variant="outline"
+											size="sm"
+											disabled={isBinding || !bindExchange.trim()}
+											className="w-full h-8 text-xs font-mono"
+										>
+											{isBinding ? "Binding..." : "+ Bind Exchange"}
+										</Button>
+									</form>
+								</CardContent>
+							</Card>
+						)}
+					</div>
+				</div>
+			)}
 
 			{/* Message Inspection Modal */}
 			{selectedMessage && (

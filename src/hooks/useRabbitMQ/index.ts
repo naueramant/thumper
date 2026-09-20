@@ -14,7 +14,6 @@ import type {
 	PublishMessageResponse,
 } from "@/services/rabbitmq/types/exchange.ts";
 import type { Node as RabbitNode } from "@/services/rabbitmq/types/node.ts";
-import type { RabbitMQOverview } from "@/services/rabbitmq/types/overview.ts";
 import type {
 	Permission,
 	TopicPermission,
@@ -85,78 +84,14 @@ export interface ShovelItem {
 	};
 }
 
-// Fallback mock overview if RabbitMQ is offline
-const fallbackOverview: RabbitMQOverview = {
-	management_version: "4.3.6",
-	rabbitmq_version: "4.3.6",
-	rates_mode: "basic",
-	cluster_name: "rabbit@local-cluster",
-	erlang_version: "27.3.4.17",
-	erlang_full_version: "Erlang/OTP 27 [erts-15.2.7.13]",
-	node: "rabbit@local-cluster",
-	message_stats: {
-		publish: 248192,
-		publish_details: { rate: 1240.5 },
-		deliver_get: 245100,
-		deliver_get_details: { rate: 1198.2 },
-		ack: 243980,
-		ack_details: { rate: 1185.0 },
-	},
-	queue_totals: {
-		messages: 3092,
-		messages_ready: 2840,
-		messages_unacknowledged: 252,
-	},
-	object_totals: {
-		connections: 4,
-		channels: 12,
-		exchanges: 8,
-		queues: 6,
-		consumers: 18,
-	},
-	listeners: [
-		{
-			node: "rabbit@local-cluster",
-			protocol: "amqp",
-			ip_address: "::",
-			port: 5672,
-		},
-		{
-			node: "rabbit@local-cluster",
-			protocol: "http",
-			ip_address: "::",
-			port: 15672,
-		},
-		{
-			node: "rabbit@local-cluster",
-			protocol: "clustering",
-			ip_address: "::",
-			port: 25672,
-		},
-	],
-	contexts: [
-		{
-			node: "rabbit@local-cluster",
-			description: "RabbitMQ Management",
-			path: "/",
-			port: 15672,
-		},
-	],
-};
-
 export function useRabbitOverview() {
 	const { intervalMs } = useRefreshInterval();
 
 	return useQuery({
 		queryKey: ["rabbit", "overview"],
 		queryFn: async () => {
-			try {
-				const client = getRabbitMQClient();
-				return await client.overview.getOverview();
-			} catch (err) {
-				console.warn("RabbitMQ API unavailable, using fallback overview:", err);
-				return fallbackOverview;
-			}
+			const client = getRabbitMQClient();
+			return await client.overview.getOverview();
 		},
 		refetchInterval: intervalMs === 0 ? false : intervalMs,
 	});
@@ -168,13 +103,9 @@ export function useRabbitNodes() {
 	return useQuery<RabbitNode[]>({
 		queryKey: ["rabbit", "nodes"],
 		queryFn: async () => {
-			try {
-				const client = getRabbitMQClient();
-				const nodes = await client.nodes.getNodes();
-				return Array.isArray(nodes) ? nodes : [];
-			} catch {
-				return [];
-			}
+			const client = getRabbitMQClient();
+			const nodes = await client.nodes.getNodes();
+			return Array.isArray(nodes) ? nodes : [];
 		},
 		refetchInterval: intervalMs === 0 ? false : intervalMs,
 	});
@@ -186,19 +117,14 @@ export function useRabbitQueues(vhost?: string) {
 	return useQuery<Queue[]>({
 		queryKey: ["rabbit", "queues", vhost],
 		queryFn: async () => {
-			try {
-				const client = getRabbitMQClient();
-				let res: Queue[] | { items: Queue[] };
-				if (vhost && vhost !== "all") {
-					res = await client.queues.getQueuesByVhost(vhost);
-				} else {
-					res = await client.queues.getQueues();
-				}
-				return Array.isArray(res) ? res : res.items || [];
-			} catch (err) {
-				console.warn("Failed to fetch queues:", err);
-				return [];
+			const client = getRabbitMQClient();
+			let res: Queue[] | { items: Queue[] };
+			if (vhost && vhost !== "all") {
+				res = await client.queues.getQueuesByVhost(vhost);
+			} else {
+				res = await client.queues.getQueues();
 			}
+			return Array.isArray(res) ? res : res.items || [];
 		},
 		refetchInterval: intervalMs === 0 ? false : intervalMs,
 	});
@@ -237,19 +163,14 @@ export function useRabbitExchanges(vhost?: string) {
 	return useQuery<Exchange[]>({
 		queryKey: ["rabbit", "exchanges", vhost],
 		queryFn: async () => {
-			try {
-				const client = getRabbitMQClient();
-				let res: Exchange[] | { items: Exchange[] };
-				if (vhost && vhost !== "all") {
-					res = await client.exchanges.getExchangesByVhost(vhost);
-				} else {
-					res = await client.exchanges.getExchanges();
-				}
-				return Array.isArray(res) ? res : res.items || [];
-			} catch (err) {
-				console.warn("Failed to fetch exchanges:", err);
-				return [];
+			const client = getRabbitMQClient();
+			let res: Exchange[] | { items: Exchange[] };
+			if (vhost && vhost !== "all") {
+				res = await client.exchanges.getExchangesByVhost(vhost);
+			} else {
+				res = await client.exchanges.getExchanges();
 			}
+			return Array.isArray(res) ? res : res.items || [];
 		},
 		refetchInterval: intervalMs === 0 ? false : intervalMs,
 	});
@@ -292,16 +213,11 @@ export function useRabbitBindings(vhost?: string) {
 	return useQuery<Binding[]>({
 		queryKey: ["rabbit", "all-bindings", vhost],
 		queryFn: async () => {
-			try {
-				const client = getRabbitMQClient();
-				if (vhost && vhost !== "all") {
-					return await client.bindings.getBindingsByVhost(vhost);
-				}
-				return await client.bindings.getBindings();
-			} catch (err) {
-				console.warn("Failed to fetch bindings:", err);
-				return [];
+			const client = getRabbitMQClient();
+			if (vhost && vhost !== "all") {
+				return await client.bindings.getBindingsByVhost(vhost);
 			}
+			return await client.bindings.getBindings();
 		},
 		refetchInterval: intervalMs === 0 ? false : intervalMs,
 	});
@@ -313,19 +229,14 @@ export function useRabbitConnections(vhost?: string) {
 	return useQuery<Connection[]>({
 		queryKey: ["rabbit", "connections", vhost],
 		queryFn: async () => {
-			try {
-				const client = getRabbitMQClient();
-				let res: Connection[] | { items: Connection[] };
-				if (vhost && vhost !== "all") {
-					res = await client.connections.getConnectionsByVhost(vhost);
-				} else {
-					res = await client.connections.getConnections();
-				}
-				return Array.isArray(res) ? res : res.items || [];
-			} catch (err) {
-				console.warn("Failed to fetch connections:", err);
-				return [];
+			const client = getRabbitMQClient();
+			let res: Connection[] | { items: Connection[] };
+			if (vhost && vhost !== "all") {
+				res = await client.connections.getConnectionsByVhost(vhost);
+			} else {
+				res = await client.connections.getConnections();
 			}
+			return Array.isArray(res) ? res : res.items || [];
 		},
 		refetchInterval: intervalMs === 0 ? false : intervalMs,
 	});
@@ -337,19 +248,14 @@ export function useRabbitChannels(vhost?: string) {
 	return useQuery<Channel[]>({
 		queryKey: ["rabbit", "channels", vhost],
 		queryFn: async () => {
-			try {
-				const client = getRabbitMQClient();
-				let res: Channel[] | { items: Channel[] };
-				if (vhost && vhost !== "all") {
-					res = await client.channels.getChannelsByVhost(vhost);
-				} else {
-					res = await client.channels.getChannels();
-				}
-				return Array.isArray(res) ? res : res.items || [];
-			} catch (err) {
-				console.warn("Failed to fetch channels:", err);
-				return [];
+			const client = getRabbitMQClient();
+			let res: Channel[] | { items: Channel[] };
+			if (vhost && vhost !== "all") {
+				res = await client.channels.getChannelsByVhost(vhost);
+			} else {
+				res = await client.channels.getChannels();
 			}
+			return Array.isArray(res) ? res : res.items || [];
 		},
 		refetchInterval: intervalMs === 0 ? false : intervalMs,
 	});
@@ -377,13 +283,8 @@ export function useRabbitConnectionChannels(name: string) {
 		queryKey: ["rabbit", "connection-channels", name],
 		queryFn: async () => {
 			if (!name) return [];
-			try {
-				const client = getRabbitMQClient();
-				return await client.connections.getConnectionChannels(name);
-			} catch (err) {
-				console.warn("Failed to fetch connection channels:", err);
-				return [];
-			}
+			const client = getRabbitMQClient();
+			return await client.connections.getConnectionChannels(name);
 		},
 		enabled: Boolean(name),
 		refetchInterval: intervalMs === 0 ? false : intervalMs,
@@ -411,17 +312,12 @@ export function useRabbitConsumers(vhost?: string) {
 	return useQuery<Consumer[]>({
 		queryKey: ["rabbit", "consumers", vhost],
 		queryFn: async () => {
-			try {
-				const client = getRabbitMQClient();
-				const list =
-					vhost && vhost !== "all"
-						? await client.consumers.getConsumersByVhost(vhost)
-						: await client.consumers.getConsumers();
-				return Array.isArray(list) ? list : [];
-			} catch (err) {
-				console.warn("Failed to fetch consumers:", err);
-				return [];
-			}
+			const client = getRabbitMQClient();
+			const list =
+				vhost && vhost !== "all"
+					? await client.consumers.getConsumersByVhost(vhost)
+					: await client.consumers.getConsumers();
+			return Array.isArray(list) ? list : [];
 		},
 		refetchInterval: intervalMs === 0 ? false : intervalMs,
 	});
@@ -433,13 +329,9 @@ export function useRabbitUsers() {
 	return useQuery<User[]>({
 		queryKey: ["rabbit", "users"],
 		queryFn: async () => {
-			try {
-				const client = getRabbitMQClient();
-				const users = await client.users.getUsers();
-				return Array.isArray(users) ? users : [];
-			} catch {
-				return [];
-			}
+			const client = getRabbitMQClient();
+			const users = await client.users.getUsers();
+			return Array.isArray(users) ? users : [];
 		},
 		refetchInterval: intervalMs === 0 ? false : intervalMs,
 	});
@@ -451,13 +343,9 @@ export function useRabbitPermissions() {
 	return useQuery<Permission[]>({
 		queryKey: ["rabbit", "permissions"],
 		queryFn: async () => {
-			try {
-				const client = getRabbitMQClient();
-				const permissions = await client.permissions.getPermissions();
-				return Array.isArray(permissions) ? permissions : [];
-			} catch {
-				return [];
-			}
+			const client = getRabbitMQClient();
+			const permissions = await client.permissions.getPermissions();
+			return Array.isArray(permissions) ? permissions : [];
 		},
 		refetchInterval: intervalMs === 0 ? false : intervalMs,
 	});
@@ -469,13 +357,9 @@ export function useRabbitTopicPermissions() {
 	return useQuery<TopicPermission[]>({
 		queryKey: ["rabbit", "topic-permissions"],
 		queryFn: async () => {
-			try {
-				const client = getRabbitMQClient();
-				const permissions = await client.permissions.getTopicPermissions();
-				return Array.isArray(permissions) ? permissions : [];
-			} catch {
-				return [];
-			}
+			const client = getRabbitMQClient();
+			const permissions = await client.permissions.getTopicPermissions();
+			return Array.isArray(permissions) ? permissions : [];
 		},
 		refetchInterval: intervalMs === 0 ? false : intervalMs,
 	});
@@ -487,13 +371,9 @@ export function useRabbitVHosts() {
 	return useQuery<VirtualHost[]>({
 		queryKey: ["rabbit", "vhosts"],
 		queryFn: async () => {
-			try {
-				const client = getRabbitMQClient();
-				const list = await client.vhosts.getVhosts();
-				return Array.isArray(list) ? list : [];
-			} catch {
-				return [];
-			}
+			const client = getRabbitMQClient();
+			const list = await client.vhosts.getVhosts();
+			return Array.isArray(list) ? list : [];
 		},
 		refetchInterval: intervalMs === 0 ? false : intervalMs,
 	});

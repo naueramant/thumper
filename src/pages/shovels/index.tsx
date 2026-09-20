@@ -1,27 +1,6 @@
-import * as React from "react";
-import {
-	Activity,
-	AlertCircle,
-	AlertTriangle,
-	ArrowRight,
-	CheckCircle2,
-	Copy,
-	Eye,
-	Layers,
-	Plus,
-	RefreshCw,
-	RotateCw,
-	Search,
-	Share2,
-	Shovel,
-	Terminal,
-	Trash2,
-	X,
-} from "lucide-react";
 import { useConfirm } from "@/components/ConfirmDialog/index.tsx";
 import { Badge } from "@/components/ui/badge/index.tsx";
 import { Button } from "@/components/ui/button/index.tsx";
-import { Checkbox } from "@/components/ui/checkbox/index.tsx";
 import {
 	Card,
 	CardContent,
@@ -30,6 +9,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card/index.tsx";
+import { Checkbox } from "@/components/ui/checkbox/index.tsx";
 import {
 	Table,
 	TableBody,
@@ -57,6 +37,26 @@ import type {
 	ShovelStatus,
 } from "@/services/rabbitmq/types/shovel.ts";
 import { formatNumber } from "@/services/rabbitmq/utils.ts";
+import {
+	Activity,
+	AlertCircle,
+	AlertTriangle,
+	ArrowRight,
+	CheckCircle2,
+	Copy,
+	Eye,
+	Layers,
+	Plus,
+	RefreshCw,
+	RotateCw,
+	Search,
+	Share2,
+	Shovel,
+	Terminal,
+	Trash2,
+	X,
+} from "lucide-react";
+import * as React from "react";
 
 export function ShovelsPage() {
 	const { selectedVHost } = useVHost();
@@ -79,16 +79,16 @@ export function ShovelsPage() {
 	} = useRabbitShovelStatuses(activeVHostParam);
 
 	// Dynamic shovel definitions query
-	const {
-		data: dynamicShovels = [],
-		refetch: refetchDynamics,
-	} = useRabbitDynamicShovels(activeVHostParam);
+	const { data: dynamicShovels = [], refetch: refetchDynamics } =
+		useRabbitDynamicShovels(activeVHostParam);
 
 	const { data: vhosts = [] } = useRabbitVHosts();
 	const { createShovel, deleteShovel, restartShovel } = useRabbitMutations();
 
 	// UI State
-	const [activeTab, setActiveTab] = React.useState<"status" | "configs">("status");
+	const [activeTab, setActiveTab] = React.useState<"status" | "configs">(
+		"status",
+	);
 	const [searchQuery, setSearchQuery] = React.useState("");
 	const [stateFilter, setStateFilter] = React.useState<string>("all");
 
@@ -96,30 +96,40 @@ export function ShovelsPage() {
 	const [isAddModalOpen, setIsAddModalOpen] = React.useState(false);
 	const [formVHost, setFormVHost] = React.useState("/");
 	const [formName, setFormName] = React.useState("");
-	const [formSrcProtocol, setFormSrcProtocol] = React.useState<ShovelProtocol>("amqp091");
+	const [formSrcProtocol, setFormSrcProtocol] =
+		React.useState<ShovelProtocol>("amqp091");
 	const [formSrcUri, setFormSrcUri] = React.useState("amqp://");
-	const [formSrcEndpointType, setFormSrcEndpointType] = React.useState<"queue" | "exchange">("queue");
+	const [formSrcEndpointType, setFormSrcEndpointType] = React.useState<
+		"queue" | "exchange"
+	>("queue");
 	const [formSrcQueue, setFormSrcQueue] = React.useState("");
 	const [formSrcExchange, setFormSrcExchange] = React.useState("");
 	const [formSrcExchangeKey, setFormSrcExchangeKey] = React.useState("");
 	const [formSrcPrefetch, setFormSrcPrefetch] = React.useState(1000);
-	const [formSrcDeleteAfter, setFormSrcDeleteAfter] = React.useState<"never" | "queue-length" | "count">("never");
+	const [formSrcDeleteAfter, setFormSrcDeleteAfter] = React.useState<
+		"never" | "queue-length" | "count"
+	>("never");
 	const [formSrcDeleteCount, setFormSrcDeleteCount] = React.useState(100);
 
-	const [formDestProtocol, setFormDestProtocol] = React.useState<ShovelProtocol>("amqp091");
+	const [formDestProtocol, setFormDestProtocol] =
+		React.useState<ShovelProtocol>("amqp091");
 	const [formDestUri, setFormDestUri] = React.useState("amqp://");
-	const [formDestEndpointType, setFormDestEndpointType] = React.useState<"queue" | "exchange">("queue");
+	const [formDestEndpointType, setFormDestEndpointType] = React.useState<
+		"queue" | "exchange"
+	>("queue");
 	const [formDestQueue, setFormDestQueue] = React.useState("");
 	const [formDestExchange, setFormDestExchange] = React.useState("");
 	const [formDestExchangeKey, setFormDestExchangeKey] = React.useState("");
 	const [formDestAddHeaders, setFormDestAddHeaders] = React.useState(false);
 
-	const [formAckMode, setFormAckMode] = React.useState<ShovelAckMode>("on-confirm");
+	const [formAckMode, setFormAckMode] =
+		React.useState<ShovelAckMode>("on-confirm");
 	const [formReconnectDelay, setFormReconnectDelay] = React.useState(1);
 	const [isSubmitting, setIsSubmitting] = React.useState(false);
 
 	// Detail inspection modal state
-	const [selectedStatus, setSelectedStatus] = React.useState<ShovelStatus | null>(null);
+	const [selectedStatus, setSelectedStatus] =
+		React.useState<ShovelStatus | null>(null);
 
 	// Available queues & exchanges in the selected vhost for autocompletion
 	const { data: vhostQueues = [] } = useRabbitQueues(formVHost);
@@ -152,7 +162,9 @@ export function ShovelsPage() {
 				stateFilter === "all" ||
 				(stateFilter === "running" && s.state === "running") ||
 				(stateFilter === "terminated" && s.state === "terminated") ||
-				(stateFilter === "other" && s.state !== "running" && s.state !== "terminated");
+				(stateFilter === "other" &&
+					s.state !== "running" &&
+					s.state !== "terminated");
 
 			return matchesSearch && matchesState;
 		});
@@ -168,7 +180,8 @@ export function ShovelsPage() {
 				s.name.toLowerCase().includes(q) ||
 				s.vhost.toLowerCase().includes(q) ||
 				(val["src-queue"] && val["src-queue"].toLowerCase().includes(q)) ||
-				(val["src-exchange"] && val["src-exchange"].toLowerCase().includes(q)) ||
+				(val["src-exchange"] &&
+					val["src-exchange"].toLowerCase().includes(q)) ||
 				(val["dest-queue"] && val["dest-queue"].toLowerCase().includes(q)) ||
 				(val["dest-exchange"] && val["dest-exchange"].toLowerCase().includes(q))
 			);
@@ -177,9 +190,16 @@ export function ShovelsPage() {
 
 	// Summary statistics
 	const totalShovels = shovelStatuses.length;
-	const runningShovels = shovelStatuses.filter((s) => s.state === "running").length;
-	const terminatedShovels = shovelStatuses.filter((s) => s.state === "terminated").length;
-	const totalForwarded = shovelStatuses.reduce((acc, s) => acc + (s.forwarded || 0), 0);
+	const runningShovels = shovelStatuses.filter(
+		(s) => s.state === "running",
+	).length;
+	const terminatedShovels = shovelStatuses.filter(
+		(s) => s.state === "terminated",
+	).length;
+	const totalForwarded = shovelStatuses.reduce(
+		(acc, s) => acc + (s.forwarded || 0),
+		0,
+	);
 
 	// Action handlers
 	const handleRestart = async (vhost: string, name: string) => {
@@ -302,7 +322,9 @@ export function ShovelsPage() {
 				definition,
 			});
 
-			toast.success(`Dynamic shovel "${formName.trim()}" created successfully!`);
+			toast.success(
+				`Dynamic shovel "${formName.trim()}" created successfully!`,
+			);
 			setIsAddModalOpen(false);
 			setFormName("");
 			setFormSrcQueue("");
@@ -310,7 +332,10 @@ export function ShovelsPage() {
 			refetchStatuses();
 			refetchDynamics();
 		} catch (err: any) {
-			toast.error("Failed to create dynamic shovel", err?.message || String(err));
+			toast.error(
+				"Failed to create dynamic shovel",
+				err?.message || String(err),
+			);
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -354,15 +379,15 @@ export function ShovelsPage() {
 							</CardTitle>
 						</div>
 						<CardDescription className="text-xs text-muted-foreground">
-							The RabbitMQ Shovel plugin provides reliable message replication and
-							drain capabilities between queues, exchanges, and clusters. It is
-							currently not enabled on this node.
+							The RabbitMQ Shovel plugin provides reliable message replication
+							and drain capabilities between queues, exchanges, and clusters. It
+							is currently not enabled on this node.
 						</CardDescription>
 					</CardHeader>
 					<CardContent className="space-y-4 text-xs">
 						<p className="text-foreground">
-							To enable Shovel and its management API on your RabbitMQ cluster, run the
-							following command on the host or inside your container:
+							To enable Shovel and its management API on your RabbitMQ cluster,
+							run the following command on the host or inside your container:
 						</p>
 
 						<div className="relative rounded-md bg-zinc-950 p-3 font-mono text-[11px] text-zinc-200 border border-zinc-800">
@@ -375,7 +400,7 @@ export function ShovelsPage() {
 									type="button"
 									onClick={() => {
 										navigator.clipboard.writeText(
-											"rabbitmq-plugins enable rabbitmq_shovel rabbitmq_shovel_management"
+											"rabbitmq-plugins enable rabbitmq_shovel rabbitmq_shovel_management",
 										);
 										toast.success("Copied activation command to clipboard");
 									}}
@@ -385,12 +410,15 @@ export function ShovelsPage() {
 									Copy
 								</button>
 							</div>
-							<code>rabbitmq-plugins enable rabbitmq_shovel rabbitmq_shovel_management</code>
+							<code>
+								rabbitmq-plugins enable rabbitmq_shovel
+								rabbitmq_shovel_management
+							</code>
 						</div>
 
 						<p className="text-muted-foreground text-[11px]">
-							No broker restart is required; dynamic shovels will be available as soon
-							as the plugin is activated.
+							No broker restart is required; dynamic shovels will be available
+							as soon as the plugin is activated.
 						</p>
 
 						<div className="pt-2 flex justify-end">
@@ -430,7 +458,8 @@ export function ShovelsPage() {
 							</Badge>
 						</div>
 						<p className="text-xs text-muted-foreground">
-							Unidirectional message bridges between queues and exchanges across virtual hosts or clusters
+							Unidirectional message bridges between queues and exchanges across
+							virtual hosts or clusters
 						</p>
 					</div>
 				</div>
@@ -446,7 +475,9 @@ export function ShovelsPage() {
 						disabled={isFetchingStatuses}
 						className="gap-1.5 text-xs font-mono h-8"
 					>
-						<RefreshCw className={`h-3.5 w-3.5 ${isFetchingStatuses ? "animate-spin" : ""}`} />
+						<RefreshCw
+							className={`h-3.5 w-3.5 ${isFetchingStatuses ? "animate-spin" : ""}`}
+						/>
 						Refresh
 					</Button>
 					<Button
@@ -495,13 +526,17 @@ export function ShovelsPage() {
 					</CardContent>
 				</Card>
 
-				<Card className={`border bg-card/60 ${terminatedShovels > 0 ? "border-destructive/40" : "border-border/80"}`}>
+				<Card
+					className={`border bg-card/60 ${terminatedShovels > 0 ? "border-destructive/40" : "border-border/80"}`}
+				>
 					<CardContent className="p-4 space-y-1">
 						<span className="text-[11px] font-medium text-muted-foreground">
 							Terminated / Errors
 						</span>
 						<div className="flex items-baseline justify-between">
-							<span className={`text-2xl font-bold font-mono ${terminatedShovels > 0 ? "text-destructive" : "text-foreground"}`}>
+							<span
+								className={`text-2xl font-bold font-mono ${terminatedShovels > 0 ? "text-destructive" : "text-foreground"}`}
+							>
 								{terminatedShovels}
 							</span>
 							<span className="text-[11px] font-mono text-muted-foreground">
@@ -629,7 +664,10 @@ export function ShovelsPage() {
 																{s.type}
 															</Badge>
 															{s.node && (
-																<span className="text-[10px] text-muted-foreground font-mono truncate max-w-[120px]" title={s.node}>
+																<span
+																	className="text-[10px] text-muted-foreground font-mono truncate max-w-[120px]"
+																	title={s.node}
+																>
 																	{s.node}
 																</span>
 															)}
@@ -650,8 +688,8 @@ export function ShovelsPage() {
 																isRunning
 																	? "bg-emerald-500 animate-pulse"
 																	: isTerminated
-																	? "bg-destructive"
-																	: "bg-amber-500"
+																		? "bg-destructive"
+																		: "bg-amber-500"
 															}`}
 														/>
 														<span
@@ -659,8 +697,8 @@ export function ShovelsPage() {
 																isRunning
 																	? "text-emerald-500"
 																	: isTerminated
-																	? "text-destructive"
-																	: "text-amber-500"
+																		? "text-destructive"
+																		: "text-amber-500"
 															}`}
 														>
 															{s.state}
@@ -691,7 +729,10 @@ export function ShovelsPage() {
 																<span>{s.src_address || "Custom"}</span>
 															)}
 														</div>
-														<div className="text-[10px] text-muted-foreground truncate max-w-[150px]" title={s.src_uri}>
+														<div
+															className="text-[10px] text-muted-foreground truncate max-w-[150px]"
+															title={s.src_uri}
+														>
 															{s.src_uri || "amqp://"}
 														</div>
 													</div>
@@ -720,7 +761,10 @@ export function ShovelsPage() {
 																<span>{s.dest_address || "Custom"}</span>
 															)}
 														</div>
-														<div className="text-[10px] text-muted-foreground truncate max-w-[150px]" title={s.dest_uri}>
+														<div
+															className="text-[10px] text-muted-foreground truncate max-w-[150px]"
+															title={s.dest_uri}
+														>
 															{s.dest_uri || "amqp://"}
 														</div>
 													</div>
@@ -733,7 +777,8 @@ export function ShovelsPage() {
 
 												{/* Remaining */}
 												<TableCell className="text-right font-mono text-xs text-muted-foreground">
-													{s.remaining !== undefined && s.remaining !== "unlimited"
+													{s.remaining !== undefined &&
+													s.remaining !== "unlimited"
 														? formatNumber(Number(s.remaining))
 														: "∞"}
 												</TableCell>
@@ -840,9 +885,14 @@ export function ShovelsPage() {
 												<TableCell>
 													<div className="font-mono text-xs space-y-0.5">
 														<div className="text-foreground">
-															{val["src-queue"] ? `queue: ${val["src-queue"]}` : `exchange: ${val["src-exchange"]}`}
+															{val["src-queue"]
+																? `queue: ${val["src-queue"]}`
+																: `exchange: ${val["src-exchange"]}`}
 														</div>
-														<div className="text-[10px] text-muted-foreground truncate max-w-[200px]" title={String(val["src-uri"])}>
+														<div
+															className="text-[10px] text-muted-foreground truncate max-w-[200px]"
+															title={String(val["src-uri"])}
+														>
 															{String(val["src-uri"])}
 														</div>
 													</div>
@@ -850,9 +900,14 @@ export function ShovelsPage() {
 												<TableCell>
 													<div className="font-mono text-xs space-y-0.5">
 														<div className="text-foreground">
-															{val["dest-queue"] ? `queue: ${val["dest-queue"]}` : `exchange: ${val["dest-exchange"]}`}
+															{val["dest-queue"]
+																? `queue: ${val["dest-queue"]}`
+																: `exchange: ${val["dest-exchange"]}`}
 														</div>
-														<div className="text-[10px] text-muted-foreground truncate max-w-[200px]" title={String(val["dest-uri"])}>
+														<div
+															className="text-[10px] text-muted-foreground truncate max-w-[200px]"
+															title={String(val["dest-uri"])}
+														>
 															{String(val["dest-uri"])}
 														</div>
 													</div>
@@ -861,12 +916,17 @@ export function ShovelsPage() {
 													{val["src-prefetch-count"] || 1000}
 												</TableCell>
 												<TableCell>
-													<Badge variant="outline" className="text-[10px] font-mono">
+													<Badge
+														variant="outline"
+														className="text-[10px] font-mono"
+													>
 														{val["ack-mode"] || "on-confirm"}
 													</Badge>
 												</TableCell>
 												<TableCell className="text-xs text-muted-foreground font-mono">
-													{val["src-delete-after"] ? String(val["src-delete-after"]) : "never"}
+													{val["src-delete-after"]
+														? String(val["src-delete-after"])
+														: "never"}
 												</TableCell>
 												<TableCell className="text-right">
 													<div className="flex items-center justify-end gap-1">
@@ -895,7 +955,10 @@ export function ShovelsPage() {
 									})
 								) : (
 									<TableRow>
-										<TableCell colSpan={8} className="h-28 text-center text-muted-foreground text-xs">
+										<TableCell
+											colSpan={8}
+											className="h-28 text-center text-muted-foreground text-xs"
+										>
 											No dynamic shovels configured.
 										</TableCell>
 									</TableRow>
@@ -917,7 +980,8 @@ export function ShovelsPage() {
 									Create Dynamic Shovel
 								</CardTitle>
 								<CardDescription className="text-xs">
-									Configure an automated, reliable bridge between queues or exchanges
+									Configure an automated, reliable bridge between queues or
+									exchanges
 								</CardDescription>
 							</div>
 							<Button
@@ -934,7 +998,9 @@ export function ShovelsPage() {
 							<CardContent className="space-y-4 pt-4 text-xs max-h-[70vh] overflow-y-auto scrollbar-thin">
 								{/* Quick Presets */}
 								<div className="space-y-1.5">
-									<label className="font-medium text-foreground">Common Presets</label>
+									<label className="font-medium text-foreground">
+										Common Presets
+									</label>
 									<div className="grid grid-cols-3 gap-2">
 										<button
 											type="button"
@@ -946,21 +1012,31 @@ export function ShovelsPage() {
 											}}
 											className="p-2 text-left rounded-md border border-border hover:bg-muted/40 transition-colors"
 										>
-											<div className="font-semibold text-foreground">Queue &rarr; Queue (Local)</div>
-											<div className="text-[10px] text-muted-foreground">Within same broker</div>
+											<div className="font-semibold text-foreground">
+												Queue &rarr; Queue (Local)
+											</div>
+											<div className="text-[10px] text-muted-foreground">
+												Within same broker
+											</div>
 										</button>
 										<button
 											type="button"
 											onClick={() => {
 												setFormSrcUri("amqp://");
-												setFormDestUri("amqp://user:password@remote-host:5672/%2f");
+												setFormDestUri(
+													"amqp://user:password@remote-host:5672/%2f",
+												);
 												setFormSrcEndpointType("queue");
 												setFormDestEndpointType("queue");
 											}}
 											className="p-2 text-left rounded-md border border-border hover:bg-muted/40 transition-colors"
 										>
-											<div className="font-semibold text-foreground">Local &rarr; Remote Broker</div>
-											<div className="text-[10px] text-muted-foreground">Cross-cluster replication</div>
+											<div className="font-semibold text-foreground">
+												Local &rarr; Remote Broker
+											</div>
+											<div className="text-[10px] text-muted-foreground">
+												Cross-cluster replication
+											</div>
 										</button>
 										<button
 											type="button"
@@ -972,8 +1048,12 @@ export function ShovelsPage() {
 											}}
 											className="p-2 text-left rounded-md border border-border hover:bg-muted/40 transition-colors"
 										>
-											<div className="font-semibold text-foreground">Exchange &rarr; Queue</div>
-											<div className="text-[10px] text-muted-foreground">Publishing bridge</div>
+											<div className="font-semibold text-foreground">
+												Exchange &rarr; Queue
+											</div>
+											<div className="text-[10px] text-muted-foreground">
+												Publishing bridge
+											</div>
 										</button>
 									</div>
 								</div>
@@ -1019,10 +1099,14 @@ export function ShovelsPage() {
 											Source Configuration
 										</span>
 										<div className="flex items-center gap-2">
-											<label className="text-[11px] text-muted-foreground">Protocol:</label>
+											<label className="text-[11px] text-muted-foreground">
+												Protocol:
+											</label>
 											<select
 												value={formSrcProtocol}
-												onChange={(e) => setFormSrcProtocol(e.target.value as ShovelProtocol)}
+												onChange={(e) =>
+													setFormSrcProtocol(e.target.value as ShovelProtocol)
+												}
 												className="h-7 px-2 rounded border border-border bg-background text-xs font-mono"
 											>
 												<option value="amqp091">AMQP 0.9.1</option>
@@ -1032,7 +1116,9 @@ export function ShovelsPage() {
 									</div>
 
 									<div className="space-y-1.5">
-										<label className="text-[11px] text-muted-foreground">Source URI</label>
+										<label className="text-[11px] text-muted-foreground">
+											Source URI
+										</label>
 										<input
 											type="text"
 											value={formSrcUri}
@@ -1044,7 +1130,9 @@ export function ShovelsPage() {
 
 									<div className="grid grid-cols-2 gap-3">
 										<div className="space-y-1.5">
-											<label className="text-[11px] text-muted-foreground">Endpoint Type</label>
+											<label className="text-[11px] text-muted-foreground">
+												Endpoint Type
+											</label>
 											<div className="flex rounded-md border border-border overflow-hidden h-8">
 												<button
 													type="button"
@@ -1073,7 +1161,9 @@ export function ShovelsPage() {
 
 										{formSrcEndpointType === "queue" ? (
 											<div className="space-y-1.5">
-												<label className="text-[11px] text-muted-foreground">Source Queue Name</label>
+												<label className="text-[11px] text-muted-foreground">
+													Source Queue Name
+												</label>
 												<input
 													type="text"
 													list="src-queues-list"
@@ -1091,7 +1181,9 @@ export function ShovelsPage() {
 										) : (
 											<>
 												<div className="space-y-1.5">
-													<label className="text-[11px] text-muted-foreground">Source Exchange</label>
+													<label className="text-[11px] text-muted-foreground">
+														Source Exchange
+													</label>
 													<input
 														type="text"
 														list="src-exchanges-list"
@@ -1107,11 +1199,15 @@ export function ShovelsPage() {
 													</datalist>
 												</div>
 												<div className="space-y-1.5 col-span-2">
-													<label className="text-[11px] text-muted-foreground">Routing Key (optional)</label>
+													<label className="text-[11px] text-muted-foreground">
+														Routing Key (optional)
+													</label>
 													<input
 														type="text"
 														value={formSrcExchangeKey}
-														onChange={(e) => setFormSrcExchangeKey(e.target.value)}
+														onChange={(e) =>
+															setFormSrcExchangeKey(e.target.value)
+														}
 														placeholder="routing-key"
 														className="w-full h-8 px-2.5 rounded-md border border-border bg-background text-xs font-mono"
 													/>
@@ -1122,35 +1218,53 @@ export function ShovelsPage() {
 
 									<div className="grid grid-cols-2 gap-3 pt-1">
 										<div className="space-y-1.5">
-											<label className="text-[11px] text-muted-foreground">Prefetch Count</label>
+											<label className="text-[11px] text-muted-foreground">
+												Prefetch Count
+											</label>
 											<input
 												type="number"
 												min={1}
 												value={formSrcPrefetch}
-												onChange={(e) => setFormSrcPrefetch(parseInt(e.target.value, 10) || 1000)}
+												onChange={(e) =>
+													setFormSrcPrefetch(
+														parseInt(e.target.value, 10) || 1000,
+													)
+												}
 												className="w-full h-8 px-2.5 rounded-md border border-border bg-background text-xs font-mono"
 											/>
 										</div>
 										<div className="space-y-1.5">
-											<label className="text-[11px] text-muted-foreground">Auto-Delete Mode</label>
+											<label className="text-[11px] text-muted-foreground">
+												Auto-Delete Mode
+											</label>
 											<select
 												value={formSrcDeleteAfter}
-												onChange={(e) => setFormSrcDeleteAfter(e.target.value as any)}
+												onChange={(e) =>
+													setFormSrcDeleteAfter(e.target.value as any)
+												}
 												className="w-full h-8 px-2.5 rounded-md border border-border bg-background text-xs font-mono"
 											>
 												<option value="never">Never (keep running)</option>
-												<option value="queue-length">After initial queue drained</option>
+												<option value="queue-length">
+													After initial queue drained
+												</option>
 												<option value="count">After specific count</option>
 											</select>
 										</div>
 										{formSrcDeleteAfter === "count" && (
 											<div className="space-y-1.5 col-span-2">
-												<label className="text-[11px] text-muted-foreground">Messages Count</label>
+												<label className="text-[11px] text-muted-foreground">
+													Messages Count
+												</label>
 												<input
 													type="number"
 													min={1}
 													value={formSrcDeleteCount}
-													onChange={(e) => setFormSrcDeleteCount(parseInt(e.target.value, 10) || 1)}
+													onChange={(e) =>
+														setFormSrcDeleteCount(
+															parseInt(e.target.value, 10) || 1,
+														)
+													}
 													className="w-full h-8 px-2.5 rounded-md border border-border bg-background text-xs font-mono"
 												/>
 											</div>
@@ -1166,10 +1280,14 @@ export function ShovelsPage() {
 											Destination Configuration
 										</span>
 										<div className="flex items-center gap-2">
-											<label className="text-[11px] text-muted-foreground">Protocol:</label>
+											<label className="text-[11px] text-muted-foreground">
+												Protocol:
+											</label>
 											<select
 												value={formDestProtocol}
-												onChange={(e) => setFormDestProtocol(e.target.value as ShovelProtocol)}
+												onChange={(e) =>
+													setFormDestProtocol(e.target.value as ShovelProtocol)
+												}
 												className="h-7 px-2 rounded border border-border bg-background text-xs font-mono"
 											>
 												<option value="amqp091">AMQP 0.9.1</option>
@@ -1179,7 +1297,9 @@ export function ShovelsPage() {
 									</div>
 
 									<div className="space-y-1.5">
-										<label className="text-[11px] text-muted-foreground">Destination URI</label>
+										<label className="text-[11px] text-muted-foreground">
+											Destination URI
+										</label>
 										<input
 											type="text"
 											value={formDestUri}
@@ -1191,7 +1311,9 @@ export function ShovelsPage() {
 
 									<div className="grid grid-cols-2 gap-3">
 										<div className="space-y-1.5">
-											<label className="text-[11px] text-muted-foreground">Endpoint Type</label>
+											<label className="text-[11px] text-muted-foreground">
+												Endpoint Type
+											</label>
 											<div className="flex rounded-md border border-border overflow-hidden h-8">
 												<button
 													type="button"
@@ -1220,7 +1342,9 @@ export function ShovelsPage() {
 
 										{formDestEndpointType === "queue" ? (
 											<div className="space-y-1.5">
-												<label className="text-[11px] text-muted-foreground">Destination Queue</label>
+												<label className="text-[11px] text-muted-foreground">
+													Destination Queue
+												</label>
 												<input
 													type="text"
 													list="dest-queues-list"
@@ -1238,12 +1362,16 @@ export function ShovelsPage() {
 										) : (
 											<>
 												<div className="space-y-1.5">
-													<label className="text-[11px] text-muted-foreground">Destination Exchange</label>
+													<label className="text-[11px] text-muted-foreground">
+														Destination Exchange
+													</label>
 													<input
 														type="text"
 														list="dest-exchanges-list"
 														value={formDestExchange}
-														onChange={(e) => setFormDestExchange(e.target.value)}
+														onChange={(e) =>
+															setFormDestExchange(e.target.value)
+														}
 														placeholder="target-exchange"
 														className="w-full h-8 px-2.5 rounded-md border border-border bg-background text-xs font-mono"
 													/>
@@ -1254,11 +1382,15 @@ export function ShovelsPage() {
 													</datalist>
 												</div>
 												<div className="space-y-1.5 col-span-2">
-													<label className="text-[11px] text-muted-foreground">Routing Key (optional)</label>
+													<label className="text-[11px] text-muted-foreground">
+														Routing Key (optional)
+													</label>
 													<input
 														type="text"
 														value={formDestExchangeKey}
-														onChange={(e) => setFormDestExchangeKey(e.target.value)}
+														onChange={(e) =>
+															setFormDestExchangeKey(e.target.value)
+														}
 														placeholder="routing-key"
 														className="w-full h-8 px-2.5 rounded-md border border-border bg-background text-xs font-mono"
 													/>
@@ -1271,9 +1403,14 @@ export function ShovelsPage() {
 										<label className="flex items-center gap-2 cursor-pointer text-muted-foreground hover:text-foreground">
 											<Checkbox
 												checked={formDestAddHeaders}
-												onChange={(e) => setFormDestAddHeaders(e.target.checked)}
+												onChange={(e) =>
+													setFormDestAddHeaders(e.target.checked)
+												}
 											/>
-											<span>Add forwarding headers (records source and destination timestamps)</span>
+											<span>
+												Add forwarding headers (records source and destination
+												timestamps)
+											</span>
 										</label>
 									</div>
 								</div>
@@ -1281,24 +1418,36 @@ export function ShovelsPage() {
 								{/* RELIABILITY SETTINGS */}
 								<div className="grid grid-cols-2 gap-3 pt-2 border-t border-border/50">
 									<div className="space-y-1.5">
-										<label className="font-medium text-foreground">Acknowledgement Mode</label>
+										<label className="font-medium text-foreground">
+											Acknowledgement Mode
+										</label>
 										<select
 											value={formAckMode}
-											onChange={(e) => setFormAckMode(e.target.value as ShovelAckMode)}
+											onChange={(e) =>
+												setFormAckMode(e.target.value as ShovelAckMode)
+											}
 											className="w-full h-8 px-2.5 rounded-md border border-border bg-background text-xs font-mono"
 										>
-											<option value="on-confirm">on-confirm (Lossless, Recommended)</option>
+											<option value="on-confirm">
+												on-confirm (Lossless, Recommended)
+											</option>
 											<option value="on-publish">on-publish (Fast)</option>
-											<option value="no-ack">no-ack (At most once, no ACKs)</option>
+											<option value="no-ack">
+												no-ack (At most once, no ACKs)
+											</option>
 										</select>
 									</div>
 									<div className="space-y-1.5">
-										<label className="font-medium text-foreground">Reconnect Delay (seconds)</label>
+										<label className="font-medium text-foreground">
+											Reconnect Delay (seconds)
+										</label>
 										<input
 											type="number"
 											min={1}
 											value={formReconnectDelay}
-											onChange={(e) => setFormReconnectDelay(parseInt(e.target.value, 10) || 1)}
+											onChange={(e) =>
+												setFormReconnectDelay(parseInt(e.target.value, 10) || 1)
+											}
 											className="w-full h-8 px-2.5 rounded-md border border-border bg-background text-xs font-mono"
 										/>
 									</div>
@@ -1338,10 +1487,14 @@ export function ShovelsPage() {
 							<div>
 								<CardTitle className="text-base font-semibold flex items-center gap-2">
 									<Shovel className="h-4.5 w-4.5 text-primary" />
-									Shovel Details: <span className="font-mono text-foreground">{selectedStatus.name}</span>
+									Shovel Details:{" "}
+									<span className="font-mono text-foreground">
+										{selectedStatus.name}
+									</span>
 								</CardTitle>
 								<CardDescription className="text-xs font-mono">
-									Virtual Host: {selectedStatus.vhost} &bull; Type: {selectedStatus.type}
+									Virtual Host: {selectedStatus.vhost} &bull; Type:{" "}
+									{selectedStatus.type}
 								</CardDescription>
 							</div>
 							<Button
@@ -1361,8 +1514,8 @@ export function ShovelsPage() {
 									selectedStatus.state === "running"
 										? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
 										: selectedStatus.state === "terminated"
-										? "border-destructive/30 bg-destructive/10 text-destructive"
-										: "border-amber-500/30 bg-amber-500/10 text-amber-400"
+											? "border-destructive/30 bg-destructive/10 text-destructive"
+											: "border-amber-500/30 bg-amber-500/10 text-amber-400"
 								}`}
 							>
 								{selectedStatus.state === "running" ? (
@@ -1371,7 +1524,9 @@ export function ShovelsPage() {
 									<AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
 								)}
 								<div>
-									<div className="font-semibold capitalize">State: {selectedStatus.state}</div>
+									<div className="font-semibold capitalize">
+										State: {selectedStatus.state}
+									</div>
 									{selectedStatus.reason && (
 										<p className="mt-1 font-mono text-[11px] whitespace-pre-wrap break-all opacity-90">
 											{selectedStatus.reason}
@@ -1386,13 +1541,17 @@ export function ShovelsPage() {
 									<span className="text-[10px] uppercase font-mono text-muted-foreground font-semibold">
 										Running On Node
 									</span>
-									<p className="font-mono text-xs text-foreground truncate">{selectedStatus.node || "—"}</p>
+									<p className="font-mono text-xs text-foreground truncate">
+										{selectedStatus.node || "—"}
+									</p>
 								</div>
 								<div className="p-2.5 rounded-md border border-border/70 bg-muted/20 space-y-1">
 									<span className="text-[10px] uppercase font-mono text-muted-foreground font-semibold">
 										Last Changed
 									</span>
-									<p className="font-mono text-xs text-foreground truncate">{selectedStatus.timestamp || "—"}</p>
+									<p className="font-mono text-xs text-foreground truncate">
+										{selectedStatus.timestamp || "—"}
+									</p>
 								</div>
 								<div className="p-2.5 rounded-md border border-border/70 bg-muted/20 space-y-1">
 									<span className="text-[10px] uppercase font-mono text-muted-foreground font-semibold">
@@ -1407,7 +1566,8 @@ export function ShovelsPage() {
 										Remaining / Pending
 									</span>
 									<p className="font-mono text-xs text-foreground">
-										{selectedStatus.remaining ?? "unlimited"} / {selectedStatus.pending ?? 0}
+										{selectedStatus.remaining ?? "unlimited"} /{" "}
+										{selectedStatus.pending ?? 0}
 									</p>
 								</div>
 							</div>
@@ -1415,7 +1575,9 @@ export function ShovelsPage() {
 							{/* Endpoints */}
 							<div className="space-y-2 border-t border-border/50 pt-3">
 								<div className="flex items-center gap-2">
-									<span className="w-20 font-semibold text-muted-foreground">Source:</span>
+									<span className="w-20 font-semibold text-muted-foreground">
+										Source:
+									</span>
 									<span className="font-mono text-foreground">
 										{selectedStatus.src_queue
 											? `queue "${selectedStatus.src_queue}"`
@@ -1426,7 +1588,9 @@ export function ShovelsPage() {
 									</span>
 								</div>
 								<div className="flex items-center gap-2">
-									<span className="w-20 font-semibold text-muted-foreground">Destination:</span>
+									<span className="w-20 font-semibold text-muted-foreground">
+										Destination:
+									</span>
 									<span className="font-mono text-foreground">
 										{selectedStatus.dest_queue
 											? `queue "${selectedStatus.dest_queue}"`
@@ -1444,7 +1608,9 @@ export function ShovelsPage() {
 								<Button
 									variant="destructive"
 									size="sm"
-									onClick={() => handleDelete(selectedStatus.vhost, selectedStatus.name)}
+									onClick={() =>
+										handleDelete(selectedStatus.vhost, selectedStatus.name)
+									}
 									className="gap-1.5 text-xs"
 								>
 									<Trash2 className="h-3.5 w-3.5" />
@@ -1461,7 +1627,9 @@ export function ShovelsPage() {
 									<Button
 										variant="outline"
 										size="sm"
-										onClick={() => handleRestart(selectedStatus.vhost, selectedStatus.name)}
+										onClick={() =>
+											handleRestart(selectedStatus.vhost, selectedStatus.name)
+										}
 										className="gap-1.5 text-xs"
 									>
 										<RotateCw className="h-3.5 w-3.5" />
