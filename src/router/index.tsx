@@ -21,6 +21,7 @@ import { LoginPage } from "@/pages/login/index.tsx";
 import { OverviewPage } from "@/pages/overview/index.tsx";
 import { DEFAULT_QUEUE_TAB, QueueDetailPage } from "@/pages/queues/detail.tsx";
 import { QueuesPage } from "@/pages/queues/index.tsx";
+import { ShovelsPage } from "@/pages/shovels/index.tsx";
 import {
 	createRootRoute,
 	createRoute,
@@ -221,6 +222,13 @@ const adminTabRoute = createRoute({
 	component: AdminPage,
 });
 
+const shovelsRoute = createRoute({
+	getParentRoute: () => appLayoutRoute,
+	path: "/shovels",
+	validateSearch: parseListSearch,
+	component: ShovelsPage,
+});
+
 const routeTree = rootRoute.addChildren([
 	loginRoute,
 	appLayoutRoute.addChildren([
@@ -238,6 +246,7 @@ const routeTree = rootRoute.addChildren([
 		queuesRoute,
 		queueDetailRoute,
 		queueDetailTabRoute,
+		shovelsRoute,
 		adminRoute,
 		adminTabRoute,
 	]),

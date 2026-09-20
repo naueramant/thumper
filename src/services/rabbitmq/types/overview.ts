@@ -68,5 +68,5 @@ export interface WhoamiResponse {
 }
 
 export interface Extension {
-  javascript: string;
+  javascript: string | string[];
 }

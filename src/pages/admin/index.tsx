@@ -39,6 +39,7 @@ import type { User } from "@/services/rabbitmq/types/user.ts";
 import type { VirtualHost } from "@/services/rabbitmq/types/vhost.ts";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import {
+	ExternalLink,
 	Eye,
 	Flag,
 	HardDrive,
@@ -1475,13 +1476,24 @@ export function AdminPage() {
 
 						{/* Dynamic Shovels */}
 						<Card>
-							<CardHeader className="pb-3">
-								<CardTitle className="text-sm font-semibold">
-									Dynamic Shovels
-								</CardTitle>
-								<CardDescription className="text-xs">
-									Unidirectional cross-cluster message bridges
-								</CardDescription>
+							<CardHeader className="pb-3 flex flex-row items-center justify-between">
+								<div>
+									<CardTitle className="text-sm font-semibold">
+										Dynamic Shovels
+									</CardTitle>
+									<CardDescription className="text-xs">
+										Unidirectional cross-cluster message bridges
+									</CardDescription>
+								</div>
+								<Button
+									variant="outline"
+									size="sm"
+									className="h-7 text-xs gap-1 font-mono"
+									onClick={() => navigate({ to: "/shovels" })}
+								>
+									Manage Shovels
+									<ExternalLink className="h-3 w-3" />
+								</Button>
 							</CardHeader>
 							<CardContent className="p-0">
 								<Table>

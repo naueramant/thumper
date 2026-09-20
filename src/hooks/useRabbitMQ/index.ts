@@ -38,6 +38,11 @@ import type {
 	CreateVhostRequest,
 	VirtualHost,
 } from "@/services/rabbitmq/types/vhost.ts";
+import type {
+	DynamicShovel,
+	DynamicShovelDefinition,
+	ShovelStatus,
+} from "@/services/rabbitmq/types/shovel.ts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 export interface FeatureFlag {
@@ -560,23 +565,87 @@ export function useRabbitLimits() {
 	});
 }
 
-export function useRabbitShovels(vhost?: string) {
-	return useQuery<ShovelItem[]>({
-		queryKey: ["rabbit", "shovels", vhost],
+/**
+ * Checks whether the RabbitMQ Shovel plugin is enabled on the cluster.
+ * Probes the /api/extensions list (standard management plugin discovery)
+ * and verifies the /api/shovels endpoint as fallback.
+ */
+export function useRabbitShovelPlugin() {
+	return useQuery<boolean>({
+		queryKey: ["rabbit", "shovel-plugin-enabled"],
 		queryFn: async () => {
 			try {
 				const client = getRabbitMQClient();
-				const path =
-					vhost && vhost !== "all"
-						? `/api/parameters/shovel/${encodeURIComponent(vhost)}`
-						: "/api/parameters/shovel";
-				const items = await client.request<ShovelItem[]>(path).catch(() => []);
-				return Array.isArray(items) ? items : [];
+				const extensions = await client.overview.getExtensions().catch(() => []);
+				const hasShovelExtension = extensions.some((ext) => {
+					const js = ext.javascript;
+					if (typeof js === "string") {
+						return js.includes("shovel");
+					}
+					if (Array.isArray(js)) {
+						return js.some((item) => item.includes("shovel"));
+					}
+					return false;
+				});
+
+				if (hasShovelExtension) return true;
+
+				// Fallback probe
+				try {
+					await client.shovels.getShovelStatuses();
+					return true;
+				} catch {
+					return false;
+				}
+			} catch {
+				return false;
+			}
+		},
+		staleTime: 60_000,
+	});
+}
+
+/**
+ * Retrieves live runtime statuses for all shovels (dynamic and static).
+ */
+export function useRabbitShovelStatuses(vhost?: string) {
+	const { intervalMs } = useRefreshInterval();
+	return useQuery<ShovelStatus[]>({
+		queryKey: ["rabbit", "shovel-statuses", vhost],
+		queryFn: async () => {
+			try {
+				const client = getRabbitMQClient();
+				return await client.shovels.getShovelStatuses(vhost);
 			} catch {
 				return [];
 			}
 		},
+		refetchInterval: intervalMs > 0 ? intervalMs : false,
 	});
+}
+
+/**
+ * Retrieves configured dynamic shovels across all or a specific vhost.
+ */
+export function useRabbitDynamicShovels(vhost?: string) {
+	const { intervalMs } = useRefreshInterval();
+	return useQuery<DynamicShovel[]>({
+		queryKey: ["rabbit", "dynamic-shovels", vhost],
+		queryFn: async () => {
+			try {
+				const client = getRabbitMQClient();
+				return await client.shovels.getDynamicShovels(vhost);
+			} catch {
+				return [];
+			}
+		},
+		refetchInterval: intervalMs > 0 ? intervalMs : false,
+	});
+}
+
+// Backward-compatible hook alias
+export function useRabbitShovels(vhost?: string) {
+	return useRabbitDynamicShovels(vhost);
 }
 
 // ---------------------- MUTATIONS ----------------------
@@ -877,6 +946,42 @@ export function useRabbitMutations() {
 			queryClient.invalidateQueries({ queryKey: ["rabbit", "overview"] }),
 	});
 
+	// Shovel mutations
+	const createShovel = useMutation({
+		mutationFn: ({
+			vhost,
+			name,
+			definition,
+		}: {
+			vhost: string;
+			name: string;
+			definition: DynamicShovelDefinition;
+		}) => client.shovels.createDynamicShovel(vhost, name, definition),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["rabbit", "shovel-statuses"] });
+			queryClient.invalidateQueries({ queryKey: ["rabbit", "dynamic-shovels"] });
+			queryClient.invalidateQueries({ queryKey: ["rabbit", "shovels"] });
+		},
+	});
+
+	const deleteShovel = useMutation({
+		mutationFn: ({ vhost, name }: { vhost: string; name: string }) =>
+			client.shovels.deleteDynamicShovel(vhost, name),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["rabbit", "shovel-statuses"] });
+			queryClient.invalidateQueries({ queryKey: ["rabbit", "dynamic-shovels"] });
+			queryClient.invalidateQueries({ queryKey: ["rabbit", "shovels"] });
+		},
+	});
+
+	const restartShovel = useMutation({
+		mutationFn: ({ vhost, name }: { vhost: string; name: string }) =>
+			client.shovels.restartShovel(vhost, name),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["rabbit", "shovel-statuses"] });
+		},
+	});
+
 	return {
 		createQueue,
 		deleteQueue,
@@ -901,5 +1006,8 @@ export function useRabbitMutations() {
 		deletePolicy,
 		enableFeatureFlag,
 		setClusterName,
+		createShovel,
+		deleteShovel,
+		restartShovel,
 	};
 }

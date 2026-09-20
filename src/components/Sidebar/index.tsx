@@ -1,5 +1,8 @@
 import { useAuth } from "@/hooks/useAuth/index.ts";
-import { useRabbitOverview } from "@/hooks/useRabbitMQ/index.ts";
+import {
+	useRabbitOverview,
+	useRabbitShovelPlugin,
+} from "@/hooks/useRabbitMQ/index.ts";
 import { cn } from "@/utilities/cn/index.ts";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
@@ -13,31 +16,11 @@ import {
 	Server,
 	Share2,
 	ShieldCheck,
+	Shovel,
 } from "lucide-react";
+import * as React from "react";
 
 const ADMIN_TAGS = ["administrator", "policymaker"];
-
-const navGroups = [
-	{
-		items: [{ label: "Overview", to: "/overview", icon: LayoutDashboard }],
-	},
-	{
-		items: [
-			{ label: "Exchanges", to: "/exchanges", icon: Share2 },
-			{ label: "Queues & Streams", to: "/queues", icon: Layers },
-		],
-	},
-	{
-		items: [
-			{ label: "Connections", to: "/connections", icon: ArrowLeftRight },
-			{ label: "Channels", to: "/channels", icon: Radio },
-		],
-	},
-	{
-		adminOnly: true,
-		items: [{ label: "Administration", to: "/admin", icon: ShieldCheck }],
-	},
-];
 
 interface SidebarProps {
 	isCollapsed: boolean;
@@ -52,12 +35,42 @@ export function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
 		select: (s) => s.location.pathname,
 	});
 	const { data: overview } = useRabbitOverview();
+	const { data: isShovelEnabled = false } = useRabbitShovelPlugin();
 	const { user } = useAuth();
 
 	const clusterName = overview?.cluster_name || "rabbit@cluster";
 	const rabbitmqVersion = overview?.rabbitmq_version || "4.3.6";
 
 	const isAdmin = user?.tags?.some((tag) => ADMIN_TAGS.includes(tag)) ?? false;
+
+	const effectiveNavGroups = React.useMemo(() => {
+		return [
+			{
+				items: [{ label: "Overview", to: "/overview", icon: LayoutDashboard }],
+			},
+			{
+				items: [
+					{ label: "Exchanges", to: "/exchanges", icon: Share2 },
+					{ label: "Queues & Streams", to: "/queues", icon: Layers },
+				],
+			},
+			{
+				items: [
+					{ label: "Connections", to: "/connections", icon: ArrowLeftRight },
+					{ label: "Channels", to: "/channels", icon: Radio },
+				],
+			},
+			{
+				adminOnly: true,
+				items: [
+					...(isShovelEnabled
+						? [{ label: "Shovels", to: "/shovels", icon: Shovel }]
+						: []),
+					{ label: "Administration", to: "/admin", icon: ShieldCheck },
+				],
+			},
+		];
+	}, [isShovelEnabled]);
 
 	return (
 		<aside
@@ -109,7 +122,7 @@ export function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
 
 			{/* Navigation */}
 			<nav className="flex-1 p-2 overflow-y-auto overflow-x-hidden space-y-3">
-				{navGroups.map((group, groupIdx) => {
+				{effectiveNavGroups.map((group, groupIdx) => {
 					if (group.adminOnly && !isAdmin) return null;
 
 					return (

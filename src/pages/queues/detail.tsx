@@ -24,17 +24,21 @@ import {
 	TableRow,
 } from "@/components/ui/table/index.tsx";
 import { toast } from "@/components/ui/toast/index.tsx";
+import { Tooltip } from "@/components/ui/tooltip/index.tsx";
 import {
 	useRabbitExchanges,
 	useRabbitMutations,
 	useRabbitQueueBindings,
 	useRabbitQueueDetail,
+	useRabbitShovelPlugin,
 } from "@/hooks/useRabbitMQ/index.ts";
 import type { AckMode, QueueMessage } from "@/services/rabbitmq/types/queue.ts";
 import {
 	formatBytes,
 	formatNumber,
 	formatRate,
+	QUEUE_STATE_DESCRIPTIONS,
+	QUEUE_TYPE_DESCRIPTIONS,
 } from "@/services/rabbitmq/utils.ts";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import {
@@ -52,13 +56,23 @@ import {
 	Network,
 	RefreshCw,
 	Send,
+	Shovel,
 	Trash2,
 	Unlink,
 	X,
 } from "lucide-react";
 import * as React from "react";
+import { MoveMessagesDialog } from "./components/MoveMessagesDialog.tsx";
+import { StreamDetailView } from "./components/StreamDetailView.tsx";
 
-type QueueTab = "messages" | "topology" | "publish" | "bindings";
+type QueueTab =
+	| "messages"
+	| "topology"
+	| "publish"
+	| "bindings"
+	| "log"
+	| "consumers"
+	| "retention";
 
 export const DEFAULT_QUEUE_TAB: QueueTab = "messages";
 const QUEUE_TAB_IDS: QueueTab[] = [
@@ -66,6 +80,9 @@ const QUEUE_TAB_IDS: QueueTab[] = [
 	"topology",
 	"bindings",
 	"publish",
+	"log",
+	"consumers",
+	"retention",
 ];
 
 export function QueueDetailPage() {
@@ -162,6 +179,8 @@ export function QueueDetailPage() {
 	// Confirmation Modals
 	const [showPurgeConfirm, setShowPurgeConfirm] = React.useState(false);
 	const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
+	const [showMoveMessagesDialog, setShowMoveMessagesDialog] = React.useState(false);
+	const { data: isShovelEnabled = false } = useRabbitShovelPlugin();
 
 	// Auto-fetch messages on mount or when queue updates
 	const fetchMessages = React.useCallback(
@@ -344,65 +363,125 @@ export function QueueDetailPage() {
 	];
 
 	return (
-		<div className="space-y-6 pb-16">
-			<Breadcrumbs>
-				<Link to="/queues" className="hover:text-foreground transition-colors">
-					Queues &amp; Streams
-				</Link>
-				<ChevronRight className="h-3 w-3 text-muted-foreground/50" />
-				<span className="text-foreground font-medium truncate max-w-xs">
-					{queueName}
-				</span>
-			</Breadcrumbs>
+		<>
+			{queue?.type === "stream" ? (
+				<StreamDetailView
+					queue={queue}
+					vhost={vhost}
+					queueName={queueName}
+					activeTab={activeTab}
+					setActiveTab={setActiveTab}
+					refetchQueue={refetchQueue}
+					messages={messages}
+					isFetchingMessages={isFetchingMessages}
+					fetchMessages={fetchMessages}
+					onSelectMessage={setSelectedMessage}
+					onDuplicateMessage={handleDuplicateMessage}
+					onDeleteQueue={() => setShowDeleteConfirm(true)}
+					bindings={bindings}
+					topologyNodes={topologyNodes}
+					topologyEdges={topologyEdges}
+					pubRoutingKey={pubRoutingKey}
+					setPubRoutingKey={setPubRoutingKey}
+					pubPayload={pubPayload}
+					setPubPayload={setPubPayload}
+					isPublishing={isPublishing}
+					pubSuccess={pubSuccess}
+					handlePublish={handlePublish}
+					bindExchange={bindExchange}
+					setBindExchange={setBindExchange}
+					bindRoutingKey={bindRoutingKey}
+					setBindRoutingKey={setBindRoutingKey}
+					isBinding={isBinding}
+					handleCreateBinding={handleCreateBinding}
+					handleDeleteBinding={handleDeleteBinding}
+				/>
+			) : (
+				<div className="space-y-6 pb-16">
+					<Breadcrumbs>
+						<Link to="/queues" className="hover:text-foreground transition-colors">
+							Queues &amp; Streams
+						</Link>
+						<ChevronRight className="h-3 w-3 text-muted-foreground/50" />
+						<span className="text-foreground font-medium truncate max-w-xs">
+							{queueName}
+						</span>
+					</Breadcrumbs>
 
-			{/* Header */}
-			<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-border/50 pb-4">
-				<div>
-					<div className="flex items-center gap-3">
-						<div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary border border-primary/20">
-							<Layers className="h-5 w-5" />
-						</div>
+					{/* Header */}
+					<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-border/50 pb-4">
 						<div>
-							<div className="flex items-center gap-2">
-								<h1 className="text-xl font-bold tracking-tight text-foreground font-mono">
-									{queueName}
-								</h1>
-								<Badge
-									variant="outline"
-									className={`text-[10px] uppercase font-mono font-semibold ${
-										queue?.type === "quorum"
-											? "border-purple-500/30 text-purple-400 bg-purple-500/10"
-											: queue?.type === "stream"
-												? "border-cyan-500/30 text-cyan-400 bg-cyan-500/10"
-												: "border-orange-500/30 text-orange-400 bg-orange-500/10"
-									}`}
-								>
-									{queue?.type || "classic"}
-								</Badge>
-								<Badge
-									variant="outline"
-									className={`text-[10px] font-mono ${
-										queue?.state === "running"
-											? "border-emerald-500/30 text-emerald-400 bg-emerald-500/10"
-											: "border-muted-foreground/30 text-muted-foreground"
-									}`}
-								>
-									{queue?.state || "idle"}
-								</Badge>
+							<div className="flex items-center gap-3">
+								<div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary border border-primary/20">
+									<Layers className="h-5 w-5" />
+								</div>
+								<div>
+									<div className="flex items-center gap-2">
+										<h1 className="text-xl font-bold tracking-tight text-foreground font-mono">
+											{queueName}
+										</h1>
+										<Tooltip
+											content={
+												QUEUE_TYPE_DESCRIPTIONS[queue?.type ?? "classic"] ??
+												queue?.type
+											}
+										>
+											<Badge
+												variant="outline"
+												className={`text-[10px] uppercase font-mono font-semibold cursor-default ${
+													queue?.type === "quorum"
+														? "border-purple-500/30 text-purple-400 bg-purple-500/10"
+														: queue?.type === "stream"
+															? "border-cyan-500/30 text-cyan-400 bg-cyan-500/10"
+															: "border-orange-500/30 text-orange-400 bg-orange-500/10"
+												}`}
+											>
+												{queue?.type || "classic"}
+											</Badge>
+										</Tooltip>
+										<Tooltip
+											content={
+												QUEUE_STATE_DESCRIPTIONS[queue?.state ?? "idle"] ??
+												queue?.state
+											}
+										>
+											<Badge
+												variant="outline"
+												className={`text-[10px] font-mono cursor-default ${
+													queue?.state === "running"
+														? "border-emerald-500/30 text-emerald-400 bg-emerald-500/10"
+														: "border-muted-foreground/30 text-muted-foreground"
+												}`}
+											>
+												{queue?.state || "idle"}
+											</Badge>
+										</Tooltip>
+									</div>
+									<p className="text-xs text-muted-foreground">
+										Node:{" "}
+										<span className="font-mono text-foreground/80">
+											{queue?.node || "unknown"}
+										</span>{" "}
+										{queue?.type === "quorum" && (
+											<>
+												• Raft Leader:{" "}
+												<span className="font-mono text-purple-400">
+													{queue.leader || queue.node}
+												</span>{" "}
+												• Replicas:{" "}
+												<span className="font-mono text-foreground/80">
+													{queue.members?.length || 1}
+												</span>{" "}
+											</>
+										)}
+										• Durability:{" "}
+										<span className="font-mono text-foreground/80">
+											{queue?.durable ? "Durable" : "Transient"}
+										</span>
+									</p>
+								</div>
 							</div>
-							<p className="text-xs text-muted-foreground">
-								Node:{" "}
-								<span className="font-mono text-foreground/80">
-									{queue?.node || "unknown"}
-								</span>{" "}
-								• Durability:{" "}
-								<span className="font-mono text-foreground/80">
-									{queue?.durable ? "Durable" : "Transient"}
-								</span>
-							</p>
 						</div>
-					</div>
-				</div>
 
 				{/* Header Action Buttons */}
 				<div className="flex items-center gap-2">
@@ -421,6 +500,19 @@ export function QueueDetailPage() {
 						/>
 						Refresh
 					</Button>
+
+					{isShovelEnabled && (
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={() => setShowMoveMessagesDialog(true)}
+							className="h-8 text-xs text-primary border-primary/30 hover:bg-primary/10"
+							title="Move messages from this queue to another using the Shovel plugin"
+						>
+							<Shovel className="h-3.5 w-3.5 mr-1.5" />
+							Move Messages
+						</Button>
+					)}
 
 					<Button
 						variant="outline"
@@ -982,6 +1074,8 @@ export function QueueDetailPage() {
 					</Card>
 				)}
 			</div>
+		</div>
+	)}
 
 			{/* Message Inspection Modal */}
 			{selectedMessage && (
@@ -1182,6 +1276,20 @@ export function QueueDetailPage() {
 					</Card>
 				</div>
 			)}
-		</div>
+			{/* Move Messages Modal */}
+			{isShovelEnabled && (
+				<MoveMessagesDialog
+					isOpen={showMoveMessagesDialog}
+					onClose={() => {
+						setShowMoveMessagesDialog(false);
+						refetchQueue();
+					}}
+					vhost={vhost}
+					sourceQueue={queueName}
+					totalMessages={readyMessages}
+					queueType={queue?.type}
+				/>
+			)}
+		</>
 	);
 }

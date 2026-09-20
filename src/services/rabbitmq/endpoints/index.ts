@@ -13,3 +13,4 @@ export * from './policies.ts';
 export * from './parameters.ts';
 export * from './health.ts';
 export * from './definitions.ts';
+export * from './shovels.ts';

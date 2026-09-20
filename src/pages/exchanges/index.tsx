@@ -21,6 +21,7 @@ import {
 	TableRow,
 } from "@/components/ui/table/index.tsx";
 import { toast } from "@/components/ui/toast/index.tsx";
+import { Tooltip } from "@/components/ui/tooltip/index.tsx";
 import {
 	useRabbitExchanges,
 	useRabbitMutations,
@@ -28,6 +29,7 @@ import {
 import { useUrlState } from "@/hooks/useUrlState/index.ts";
 import { useVHost } from "@/hooks/useVHost/index.ts";
 import type { Exchange } from "@/services/rabbitmq/types/exchange.ts";
+import { EXCHANGE_TYPE_DESCRIPTIONS } from "@/services/rabbitmq/utils.ts";
 import { Link } from "@tanstack/react-router";
 import {
 	createColumnHelper,
@@ -38,6 +40,8 @@ import {
 	useReactTable,
 } from "@tanstack/react-table";
 import {
+	ArrowDown,
+	ArrowUp,
 	ArrowUpDown,
 	ChevronRight,
 	Eye,
@@ -273,11 +277,27 @@ export function ExchangesPage() {
 			}),
 			columnHelper.accessor("type", {
 				header: "Type",
-				cell: (info) => (
-					<Badge variant="outline" className="font-mono text-[10px] uppercase">
-						{info.getValue()}
-					</Badge>
-				),
+				cell: (info) => {
+					const type = info.getValue();
+					return (
+						<Tooltip content={EXCHANGE_TYPE_DESCRIPTIONS[type] ?? type}>
+							<Badge
+								variant="outline"
+								className={`font-mono text-[10px] uppercase cursor-default ${
+									type === "topic"
+										? "border-purple-500/30 text-purple-400 bg-purple-500/10"
+										: type === "fanout"
+											? "border-emerald-500/30 text-emerald-400 bg-emerald-500/10"
+											: type === "headers"
+												? "border-amber-500/30 text-amber-400 bg-amber-500/10"
+												: "border-sky-500/30 text-sky-400 bg-sky-500/10"
+								}`}
+							>
+								{type}
+							</Badge>
+						</Tooltip>
+					);
+				},
 			}),
 			columnHelper.accessor("durable", {
 				header: "Features",
@@ -494,26 +514,34 @@ export function ExchangesPage() {
 						<TableHeader>
 							{table.getHeaderGroups().map((hg) => (
 								<TableRow key={hg.id}>
-									{hg.headers.map((header) => (
-										<TableHead key={header.id}>
-											<div
-												className={
-													header.column.getCanSort()
-														? "flex items-center gap-1 cursor-pointer select-none hover:text-foreground"
-														: ""
-												}
-												onClick={header.column.getToggleSortingHandler()}
-											>
-												{flexRender(
-													header.column.columnDef.header,
-													header.getContext(),
-												)}
-												{header.column.getCanSort() && (
-													<ArrowUpDown className="h-3 w-3 text-muted-foreground/70" />
-												)}
-											</div>
-										</TableHead>
-									))}
+									{hg.headers.map((header) => {
+										const sortDir = header.column.getIsSorted();
+										return (
+											<TableHead key={header.id}>
+												<div
+													className={
+														header.column.getCanSort()
+															? `flex items-center gap-1 cursor-pointer select-none hover:text-foreground ${sortDir ? "text-foreground font-semibold" : ""}`
+															: ""
+													}
+													onClick={header.column.getToggleSortingHandler()}
+												>
+													{flexRender(
+														header.column.columnDef.header,
+														header.getContext(),
+													)}
+													{header.column.getCanSort() &&
+														(sortDir === "asc" ? (
+															<ArrowUp className="h-3 w-3 text-primary" />
+														) : sortDir === "desc" ? (
+															<ArrowDown className="h-3 w-3 text-primary" />
+														) : (
+															<ArrowUpDown className="h-3 w-3 text-muted-foreground/70" />
+														))}
+												</div>
+											</TableHead>
+										);
+									})}
 								</TableRow>
 							))}
 						</TableHeader>

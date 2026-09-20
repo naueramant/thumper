@@ -9,9 +9,10 @@ import {
   Layers,
   ShieldCheck,
   Server,
+  Shovel,
   X,
 } from 'lucide-react'
-import { useRabbitQueues, useRabbitExchanges, useRabbitOverview } from '@/hooks/useRabbitMQ/index.ts'
+import { useRabbitQueues, useRabbitExchanges, useRabbitOverview, useRabbitShovelPlugin } from '@/hooks/useRabbitMQ/index.ts'
 import { useVHost } from '@/hooks/useVHost/index.ts'
 
 interface CommandPaletteProps {
@@ -29,6 +30,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
   const { data: queues = [] } = useRabbitQueues()
   const { data: exchanges = [] } = useRabbitExchanges()
   const { data: overview } = useRabbitOverview()
+  const { data: isShovelEnabled = false } = useRabbitShovelPlugin()
   const { selectedVHost, setSelectedVHost, availableVHosts } = useVHost()
 
   React.useEffect(() => {
@@ -75,6 +77,9 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
     { label: 'Channels', to: '/channels', icon: Radio, category: 'Navigation' },
     { label: 'Exchanges', to: '/exchanges', icon: Share2, category: 'Navigation' },
     { label: 'Queues & Streams', to: '/queues', icon: Layers, category: 'Navigation' },
+    ...(isShovelEnabled
+      ? [{ label: 'Shovels', to: '/shovels', icon: Shovel, category: 'Navigation' }]
+      : []),
     { label: 'Administration Hub', to: '/admin', icon: ShieldCheck, category: 'Navigation' },
   ]
 

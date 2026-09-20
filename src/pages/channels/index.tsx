@@ -30,7 +30,7 @@ import {
 	type SortingState,
 	useReactTable,
 } from "@tanstack/react-table";
-import { ArrowUpDown, Radio, Search } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Radio, Search } from "lucide-react";
 import * as React from "react";
 
 const columnHelper = createColumnHelper<Channel>();
@@ -287,18 +287,18 @@ export function ChannelsPage() {
 					</span>
 				),
 			}),
-			columnHelper.accessor("message_stats.publish_details.rate", {
-				id: "publishRate",
-				header: "Pub Rate",
-				cell: (info) => {
-					const rate = info.getValue() ?? 0;
-					return (
+			columnHelper.accessor(
+				(row) => row.message_stats?.publish_details?.rate ?? 0,
+				{
+					id: "publishRate",
+					header: "Pub Rate",
+					cell: (info) => (
 						<span className="font-mono text-xs text-primary">
-							{rate.toFixed(1)}/s
+							{info.getValue().toFixed(1)}/s
 						</span>
-					);
+					),
 				},
-			}),
+			),
 			columnHelper.display({
 				id: "actions",
 				header: "",
@@ -423,26 +423,34 @@ export function ChannelsPage() {
 						<TableHeader>
 							{table.getHeaderGroups().map((hg) => (
 								<TableRow key={hg.id}>
-									{hg.headers.map((header) => (
-										<TableHead key={header.id}>
-											<div
-												className={
-													header.column.getCanSort()
-														? "flex items-center gap-1 cursor-pointer select-none hover:text-foreground"
-														: ""
-												}
-												onClick={header.column.getToggleSortingHandler()}
-											>
-												{flexRender(
-													header.column.columnDef.header,
-													header.getContext(),
-												)}
-												{header.column.getCanSort() && (
-													<ArrowUpDown className="h-3 w-3 text-muted-foreground/70" />
-												)}
-											</div>
-										</TableHead>
-									))}
+									{hg.headers.map((header) => {
+										const sortDir = header.column.getIsSorted();
+										return (
+											<TableHead key={header.id}>
+												<div
+													className={
+														header.column.getCanSort()
+															? `flex items-center gap-1 cursor-pointer select-none hover:text-foreground ${sortDir ? "text-foreground font-semibold" : ""}`
+															: ""
+													}
+													onClick={header.column.getToggleSortingHandler()}
+												>
+													{flexRender(
+														header.column.columnDef.header,
+														header.getContext(),
+													)}
+													{header.column.getCanSort() &&
+														(sortDir === "asc" ? (
+															<ArrowUp className="h-3 w-3 text-primary" />
+														) : sortDir === "desc" ? (
+															<ArrowDown className="h-3 w-3 text-primary" />
+														) : (
+															<ArrowUpDown className="h-3 w-3 text-muted-foreground/70" />
+														))}
+												</div>
+											</TableHead>
+										);
+									})}
 								</TableRow>
 							))}
 						</TableHeader>

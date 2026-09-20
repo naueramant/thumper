@@ -32,7 +32,9 @@ import {
 	useReactTable,
 } from "@tanstack/react-table";
 import {
+	ArrowDown,
 	ArrowLeftRight,
+	ArrowUp,
 	ArrowUpDown,
 	Lock,
 	Search,
@@ -403,26 +405,34 @@ export function ConnectionsPage() {
 						<TableHeader>
 							{table.getHeaderGroups().map((hg) => (
 								<TableRow key={hg.id}>
-									{hg.headers.map((header) => (
-										<TableHead key={header.id}>
-											<div
-												className={
-													header.column.getCanSort()
-														? "flex items-center gap-1 cursor-pointer select-none hover:text-foreground"
-														: ""
-												}
-												onClick={header.column.getToggleSortingHandler()}
-											>
-												{flexRender(
-													header.column.columnDef.header,
-													header.getContext(),
-												)}
-												{header.column.getCanSort() && (
-													<ArrowUpDown className="h-3 w-3 text-muted-foreground/70" />
-												)}
-											</div>
-										</TableHead>
-									))}
+									{hg.headers.map((header) => {
+										const sortDir = header.column.getIsSorted();
+										return (
+											<TableHead key={header.id}>
+												<div
+													className={
+														header.column.getCanSort()
+															? `flex items-center gap-1 cursor-pointer select-none hover:text-foreground ${sortDir ? "text-foreground font-semibold" : ""}`
+															: ""
+													}
+													onClick={header.column.getToggleSortingHandler()}
+												>
+													{flexRender(
+														header.column.columnDef.header,
+														header.getContext(),
+													)}
+													{header.column.getCanSort() &&
+														(sortDir === "asc" ? (
+															<ArrowUp className="h-3 w-3 text-primary" />
+														) : sortDir === "desc" ? (
+															<ArrowDown className="h-3 w-3 text-primary" />
+														) : (
+															<ArrowUpDown className="h-3 w-3 text-muted-foreground/70" />
+														))}
+												</div>
+											</TableHead>
+										);
+									})}
 								</TableRow>
 							))}
 						</TableHeader>

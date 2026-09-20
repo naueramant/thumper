@@ -30,6 +30,7 @@ import { ParametersApi } from "./endpoints/parameters.ts";
 import { PermissionsApi } from "./endpoints/permissions.ts";
 import { PoliciesApi } from "./endpoints/policies.ts";
 import { QueuesApi } from "./endpoints/queues.ts";
+import { ShovelsApi } from "./endpoints/shovels.ts";
 import { UsersApi } from "./endpoints/users.ts";
 import { VhostsApi } from "./endpoints/vhosts.ts";
 
@@ -57,6 +58,7 @@ export class RabbitMQClient {
 	readonly permissions: PermissionsApi;
 	readonly policies: PoliciesApi;
 	readonly parameters: ParametersApi;
+	readonly shovels: ShovelsApi;
 	readonly health: HealthApi;
 	readonly definitions: DefinitionsApi;
 
@@ -76,6 +78,7 @@ export class RabbitMQClient {
 		this.permissions = new PermissionsApi(this);
 		this.policies = new PoliciesApi(this);
 		this.parameters = new ParametersApi(this);
+		this.shovels = new ShovelsApi(this);
 		this.health = new HealthApi(this);
 		this.definitions = new DefinitionsApi(this);
 	}

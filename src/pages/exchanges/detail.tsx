@@ -11,6 +11,7 @@ import {
 	CardTitle,
 } from "@/components/ui/card/index.tsx";
 import { toast } from "@/components/ui/toast/index.tsx";
+import { Tooltip } from "@/components/ui/tooltip/index.tsx";
 import {
 	useRabbitExchangeBindings,
 	useRabbitExchangeDetail,
@@ -18,7 +19,7 @@ import {
 	useRabbitMutations,
 	useRabbitQueues,
 } from "@/hooks/useRabbitMQ/index.ts";
-import { formatRate } from "@/services/rabbitmq/utils.ts";
+import { EXCHANGE_TYPE_DESCRIPTIONS, formatRate } from "@/services/rabbitmq/utils.ts";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import {
 	AlertCircle,
@@ -268,12 +269,27 @@ export function ExchangeDetailPage() {
 								<h1 className="text-xl font-bold tracking-tight text-foreground font-mono">
 									{displayName}
 								</h1>
-								<Badge
-									variant="outline"
-									className="text-[10px] uppercase font-mono font-semibold border-primary/30 text-primary bg-primary/10"
+								<Tooltip
+									content={
+										EXCHANGE_TYPE_DESCRIPTIONS[exchange?.type ?? "direct"] ??
+										exchange?.type
+									}
 								>
-									{exchange?.type || "direct"}
-								</Badge>
+									<Badge
+										variant="outline"
+										className={`text-[10px] uppercase font-mono font-semibold cursor-default ${
+											exchange?.type === "topic"
+												? "border-purple-500/30 text-purple-400 bg-purple-500/10"
+												: exchange?.type === "fanout"
+													? "border-emerald-500/30 text-emerald-400 bg-emerald-500/10"
+													: exchange?.type === "headers"
+														? "border-amber-500/30 text-amber-400 bg-amber-500/10"
+														: "border-sky-500/30 text-sky-400 bg-sky-500/10"
+										}`}
+									>
+										{exchange?.type || "direct"}
+									</Badge>
+								</Tooltip>
 								{isDefaultExchange && (
 									<Badge
 										variant="outline"
