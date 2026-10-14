@@ -49,19 +49,32 @@ import {
 } from "lucide-react";
 import * as React from "react";
 import {
-	Area,
-	AreaChart,
-	CartesianGrid,
-	ResponsiveContainer,
-	Tooltip,
-	XAxis,
-	YAxis,
-} from "recharts";
+	QueuedMessagesChart,
+	MessageRatesChart,
+} from "@/components/HistoricalCharts/index.ts";
+import {
+	OVERVIEW_CHART_RANGES,
+	type ChartRangeOption,
+} from "@/utilities/chart/telemetry.ts";
 
 const nodeColumnHelper = createColumnHelper<RabbitNode>();
 
 export function OverviewPage() {
-	const { data: overview } = useRabbitOverview();
+	const [chartRange, setChartRange] = React.useState<ChartRangeOption>(
+		OVERVIEW_CHART_RANGES[2], // 1 hour default
+	);
+
+	const queryOptions = React.useMemo(
+		() => ({
+			lengths_age: chartRange.age,
+			lengths_incr: chartRange.incr,
+			msg_rates_age: chartRange.age,
+			msg_rates_incr: chartRange.incr,
+		}),
+		[chartRange],
+	);
+
+	const { data: overview } = useRabbitOverview(queryOptions);
 	const { data: queues = [] } = useRabbitQueues();
 	const { data: nodes = [] } = useRabbitNodes();
 
@@ -86,40 +99,7 @@ export function OverviewPage() {
 	const pubRate = overview?.message_stats?.publish_details?.rate ?? 0;
 	const delRate = overview?.message_stats?.deliver_get_details?.rate ?? 0;
 
-	const MAX_TELEMETRY_POINTS = 20;
 
-	// Dynamic time-series chart data generated from current publish/deliver rates
-	const [telemetryHistory, setTelemetryHistory] = React.useState<
-		{ time: string; ingress: number; egress: number }[]
-	>([
-		{ time: "19:50", ingress: 0, egress: 0 },
-		{ time: "19:51", ingress: 0, egress: 0 },
-		{ time: "19:52", ingress: 0, egress: 0 },
-		{ time: "19:53", ingress: 0, egress: 0 },
-		{ time: "19:54", ingress: 0, egress: 0 },
-		{ time: "19:55", ingress: 0, egress: 0 },
-	]);
-
-	React.useEffect(() => {
-		if (!overview) return;
-		const now = new Date();
-		const timeStr = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}:${now.getSeconds().toString().padStart(2, "0")}`;
-
-		setTelemetryHistory((prev) => {
-			const next = [
-				...prev.slice(-(MAX_TELEMETRY_POINTS - 1)),
-				{
-					time: timeStr,
-					ingress: Math.round(pubRate * 10) / 10,
-					egress: Math.round(delRate * 10) / 10,
-				},
-			];
-			return next;
-		});
-		// Depend on the extracted primitive rate values, not the full overview object,
-		// to avoid appending a duplicate point every time React Query returns a new reference.
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [pubRate, delRate]);
 
 	const handleExportDefinitions = async () => {
 		setIsExporting(true);
@@ -183,7 +163,7 @@ export function OverviewPage() {
 						{info.row.original.type && (
 							<Badge
 								variant="outline"
-								className="text-[10px] uppercase font-mono py-0"
+								className="text-[10px] uppercase font-mono"
 							>
 								{info.row.original.type}
 							</Badge>
@@ -468,120 +448,23 @@ export function OverviewPage() {
 				/>
 			</div>
 
-			{/* Real-Time Throughput Chart */}
-			<Card>
-				<CardHeader className="pb-2">
-					<div className="flex items-center justify-between">
-						<div>
-							<CardTitle className="text-base">
-								Message Ingress & Egress Rates
-							</CardTitle>
-							<CardDescription className="text-xs">
-								Published vs Delivered message throughput (msg/sec)
-							</CardDescription>
-						</div>
-						<div className="flex items-center gap-4 text-xs font-mono">
-							<span className="flex items-center gap-1.5 text-foreground">
-								<span className="h-2.5 w-2.5 rounded-sm bg-primary" /> Pub:{" "}
-								{pubRate.toFixed(1)}/s
-							</span>
-							<span className="flex items-center gap-1.5 text-muted-foreground">
-								<span className="h-2.5 w-2.5 rounded-sm bg-muted-foreground/60" />{" "}
-								Del: {delRate.toFixed(1)}/s
-							</span>
-						</div>
-					</div>
-				</CardHeader>
-				<CardContent>
-					<div className="h-64 w-full">
-						<ResponsiveContainer width="100%" height="100%">
-							<AreaChart
-								data={telemetryHistory}
-								margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-							>
-								<defs>
-									<linearGradient
-										id="ingressGradient"
-										x1="0"
-										y1="0"
-										x2="0"
-										y2="1"
-									>
-										<stop
-											offset="5%"
-											stopColor="var(--color-primary, #ea6a28)"
-											stopOpacity={0.35}
-										/>
-										<stop
-											offset="95%"
-											stopColor="var(--color-primary, #ea6a28)"
-											stopOpacity={0.0}
-										/>
-									</linearGradient>
-									<linearGradient
-										id="egressGradient"
-										x1="0"
-										y1="0"
-										x2="0"
-										y2="1"
-									>
-										<stop offset="5%" stopColor="#71717a" stopOpacity={0.2} />
-										<stop offset="95%" stopColor="#71717a" stopOpacity={0.0} />
-									</linearGradient>
-								</defs>
-								<CartesianGrid
-									strokeDasharray="3 3"
-									vertical={false}
-									opacity={0.15}
-								/>
-								<XAxis
-									dataKey="time"
-									tickLine={false}
-									axisLine={false}
-									fontSize={11}
-									stroke="#888888"
-								/>
-								<YAxis
-									tickLine={false}
-									axisLine={false}
-									fontSize={11}
-									stroke="#888888"
-								/>
-								<Tooltip
-									contentStyle={{
-										backgroundColor: "var(--color-card, #1c1d22)",
-										borderColor: "var(--color-border, #2e3039)",
-										borderRadius: "8px",
-										fontSize: "12px",
-										color: "var(--color-foreground, #ffffff)",
-									}}
-								/>
-								<Area
-									type="monotone"
-									dataKey="ingress"
-									name="Publish Rate"
-									stroke="var(--color-primary, #ea6a28)"
-									strokeWidth={2}
-									fillOpacity={1}
-									fill="url(#ingressGradient)"
-									isAnimationActive={false}
-								/>
-								<Area
-									type="monotone"
-									dataKey="egress"
-									name="Deliver Rate"
-									stroke="#a1a1aa"
-									strokeWidth={1.5}
-									strokeDasharray="4 4"
-									fillOpacity={1}
-									fill="url(#egressGradient)"
-									isAnimationActive={false}
-								/>
-							</AreaChart>
-						</ResponsiveContainer>
-					</div>
-				</CardContent>
-			</Card>
+			{/* Historical Telemetry Charts */}
+			<div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+				<QueuedMessagesChart
+					source={overview?.queue_totals}
+					availableRanges={OVERVIEW_CHART_RANGES}
+					selectedRange={chartRange}
+					onRangeChange={setChartRange}
+					height={220}
+				/>
+				<MessageRatesChart
+					stats={overview?.message_stats}
+					availableRanges={OVERVIEW_CHART_RANGES}
+					selectedRange={chartRange}
+					onRangeChange={setChartRange}
+					height={220}
+				/>
+			</div>
 
 			{/* Cluster Nodes Health & Resource Monitoring */}
 			<Card>

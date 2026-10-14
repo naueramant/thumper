@@ -22,7 +22,6 @@ import {
 import { toast } from "@/components/ui/toast/index.tsx";
 import { useAuth } from "@/hooks/useAuth/index.ts";
 import {
-	useRabbitExchanges,
 	useRabbitFeatureFlags,
 	useRabbitLimits,
 	useRabbitMutations,
@@ -37,10 +36,9 @@ import type { Policy } from "@/services/rabbitmq/types/policy.ts";
 import type { User } from "@/services/rabbitmq/types/user.ts";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import {
-	Eye,
+	ChevronRight,
 	Flag,
 	HardDrive,
-	Hash,
 	Lock,
 	Network,
 	Plus,
@@ -49,11 +47,11 @@ import {
 	ShieldCheck,
 	Sliders,
 	Trash2,
-	UserCog,
 	Users,
 	X,
 } from "lucide-react";
 import * as React from "react";
+import { ManageUserModal } from "./components/ManageUserModal.tsx";
 
 const ADMIN_TAGS = ["administrator", "policymaker"];
 
@@ -110,11 +108,6 @@ export function AdminPage() {
 	const {
 		createUser,
 		deleteUser,
-		updateUser,
-		setUserPermissions,
-		clearUserPermissions,
-		setUserTopicPermission,
-		clearUserTopicPermission,
 		createVHost,
 		deleteVHost,
 		createPolicy,
@@ -176,67 +169,6 @@ export function AdminPage() {
 
 	// User permissions modal state
 	const [permUser, setPermUser] = React.useState<User | null>(null);
-	const [userModalTab, setUserModalTab] = React.useState<
-		"permissions" | "topics" | "account"
-	>("permissions");
-	const [permVHost, setPermVHost] = React.useState("/");
-	const [permConf, setPermConf] = React.useState(".*");
-	const [permWrite, setPermWrite] = React.useState(".*");
-	const [permRead, setPermRead] = React.useState(".*");
-	const [isSettingPerm, setIsSettingPerm] = React.useState(false);
-
-	// User topic-permissions form state (inside the user management modal)
-	const [topicPermVHost, setTopicPermVHost] = React.useState("/");
-	const [topicPermExchange, setTopicPermExchange] = React.useState("");
-	const [topicPermWrite, setTopicPermWrite] = React.useState(".*");
-	const [topicPermRead, setTopicPermRead] = React.useState(".*");
-	const [isSettingTopicPerm, setIsSettingTopicPerm] = React.useState(false);
-
-	// Update-user (tags/password) form state (inside the user management modal)
-	const [updateUserTags, setUpdateUserTags] = React.useState("");
-	const [updateUserPassword, setUpdateUserPassword] = React.useState("");
-	const [isUpdatingUser, setIsUpdatingUser] = React.useState(false);
-
-
-	const permUserGrants = React.useMemo(
-		() => permissions.filter((p) => p.user === permUser?.name),
-		[permissions, permUser],
-	);
-
-	const permUserTopicGrants = React.useMemo(
-		() => topicPermissions.filter((p) => p.user === permUser?.name),
-		[topicPermissions, permUser],
-	);
-
-	const { data: topicPermVHostExchanges = [] } =
-		useRabbitExchanges(topicPermVHost);
-
-
-	// Prefill the form with the existing grant for the selected vhost, if any
-	React.useEffect(() => {
-		const existing = permUserGrants.find((p) => p.vhost === permVHost);
-		setPermConf(existing?.configure ?? ".*");
-		setPermWrite(existing?.write ?? ".*");
-		setPermRead(existing?.read ?? ".*");
-	}, [permVHost, permUserGrants]);
-
-	// Reset the user management modal's secondary forms whenever the target user changes
-	React.useEffect(() => {
-		if (permUser) {
-			setUserModalTab("permissions");
-			setUpdateUserTags(
-				Array.isArray(permUser.tags)
-					? permUser.tags.join(", ")
-					: String(permUser.tags ?? ""),
-			);
-			setUpdateUserPassword("");
-			setTopicPermVHost(permVHost);
-			setTopicPermExchange("");
-			setTopicPermWrite(".*");
-			setTopicPermRead(".*");
-		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [permUser]);
 
 
 	React.useEffect(() => {
@@ -286,117 +218,6 @@ export function AdminPage() {
 			setPermUser((prev) => (prev?.name === username ? null : prev));
 		} catch (err: any) {
 			toast.error("Failed to delete user", err.message || String(err));
-		}
-	};
-
-	const handleSetPermissions = async (e: React.FormEvent) => {
-		e.preventDefault();
-		if (!permUser) return;
-		setIsSettingPerm(true);
-		try {
-			await setUserPermissions.mutateAsync({
-				vhost: permVHost,
-				user: permUser.name,
-				permissions: {
-					configure: permConf,
-					write: permWrite,
-					read: permRead,
-				},
-			});
-			toast.success(`Updated permissions for ${permUser.name} on ${permVHost}`);
-		} catch (err: any) {
-			toast.error("Failed to set permissions", err.message || String(err));
-		} finally {
-			setIsSettingPerm(false);
-		}
-	};
-
-	const handleClearPermission = async (vhost: string) => {
-		if (!permUser) return;
-		if (
-			!(await confirm({
-				title: "Revoke Access?",
-				description: `Remove ${permUser.name}'s permissions on virtual host "${vhost}"?`,
-				confirmLabel: "Revoke Access",
-			}))
-		)
-			return;
-		try {
-			await clearUserPermissions.mutateAsync({ vhost, user: permUser.name });
-			toast.success(`Revoked ${permUser.name}'s access to ${vhost}`);
-		} catch (err: any) {
-			toast.error("Failed to revoke permissions", err.message || String(err));
-		}
-	};
-
-	const handleSetTopicPermission = async (e: React.FormEvent) => {
-		e.preventDefault();
-		if (!permUser || !topicPermExchange.trim()) return;
-		setIsSettingTopicPerm(true);
-		try {
-			await setUserTopicPermission.mutateAsync({
-				vhost: topicPermVHost,
-				user: permUser.name,
-				exchange: topicPermExchange.trim(),
-				write: topicPermWrite,
-				read: topicPermRead,
-			});
-			toast.success(
-				`Set topic permission for ${permUser.name} on ${topicPermExchange}`,
-			);
-		} catch (err: any) {
-			toast.error("Failed to set topic permission", err.message || String(err));
-		} finally {
-			setIsSettingTopicPerm(false);
-		}
-	};
-
-	const handleClearTopicPermission = async (vhost: string) => {
-		if (!permUser) return;
-		if (
-			!(await confirm({
-				title: "Revoke Topic Access?",
-				description: `Remove ${permUser.name}'s topic permissions on virtual host "${vhost}"?`,
-				confirmLabel: "Revoke Access",
-			}))
-		)
-			return;
-		try {
-			await clearUserTopicPermission.mutateAsync({
-				vhost,
-				user: permUser.name,
-			});
-			toast.success(`Revoked ${permUser.name}'s topic access to ${vhost}`);
-		} catch (err: any) {
-			toast.error(
-				"Failed to revoke topic permissions",
-				err.message || String(err),
-			);
-		}
-	};
-
-	const handleUpdateUser = async (e: React.FormEvent) => {
-		e.preventDefault();
-		if (!permUser) return;
-		setIsUpdatingUser(true);
-		try {
-			const tags = updateUserTags
-				.split(",")
-				.map((t) => t.trim())
-				.filter(Boolean);
-			await updateUser.mutateAsync({
-				name: permUser.name,
-				data: updateUserPassword.trim()
-					? { password: updateUserPassword.trim(), tags }
-					: { password_hash: permUser.password_hash, tags },
-			});
-			setPermUser((prev) => (prev ? { ...prev, tags } : prev));
-			setUpdateUserPassword("");
-			toast.success(`Updated user "${permUser.name}"`);
-		} catch (err: any) {
-			toast.error("Failed to update user", err.message || String(err));
-		} finally {
-			setIsUpdatingUser(false);
 		}
 	};
 
@@ -716,7 +537,7 @@ export function AdminPage() {
 							<span>{t.label}</span>
 							{t.count !== undefined && (
 								<span
-									className={`text-[10px] px-1.5 py-0.2 rounded-full ${isActive ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"}`}
+									className={`inline-flex items-center text-[10px] px-1.5 py-0.5 leading-none rounded-full ${isActive ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"}`}
 								>
 									{t.count}
 								</span>
@@ -837,7 +658,6 @@ export function AdminPage() {
 															size="sm"
 															onClick={() => {
 																setPermUser(u);
-																setPermVHost("/");
 															}}
 															className="h-6 text-[11px] px-2 text-primary hover:bg-primary/10"
 														>
@@ -968,9 +788,10 @@ export function AdminPage() {
 													<Link
 														to="/admin/vhosts/$name"
 														params={{ name: encodeURIComponent(v.name) }}
-														className="text-foreground hover:text-primary transition-colors"
+														className="text-foreground hover:text-primary transition-colors inline-flex items-center gap-1 group cursor-pointer"
 													>
 														{v.name}
+														<ChevronRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity text-primary" />
 													</Link>
 												</TableCell>
 												<TableCell className="text-xs text-muted-foreground">
@@ -996,20 +817,6 @@ export function AdminPage() {
 													</Badge>
 												</TableCell>
 												<TableCell className="text-right space-x-1">
-													<Button
-														variant="ghost"
-														size="sm"
-														onClick={() =>
-															navigate({
-																to: "/admin/vhosts/$name",
-																params: { name: encodeURIComponent(v.name) },
-															})
-														}
-														className="h-6 text-[11px] px-2 text-primary hover:bg-primary/10"
-													>
-														<Eye className="h-3 w-3 mr-1" />
-														Manage
-													</Button>
 													<span
 														title={
 															v.name === "/"
@@ -1498,7 +1305,7 @@ export function AdminPage() {
 							<div className="flex justify-end gap-2 pt-3 border-t border-border">
 								<Button
 									type="button"
-									variant="outline"
+									variant="secondary"
 									size="sm"
 									onClick={() => setIsAddUserOpen(false)}
 								>
@@ -1590,7 +1397,7 @@ export function AdminPage() {
 							<div className="flex justify-end gap-2 pt-3 border-t border-border">
 								<Button
 									type="button"
-									variant="outline"
+									variant="secondary"
 									size="sm"
 									onClick={() => setIsAddVHostOpen(false)}
 								>
@@ -1728,7 +1535,7 @@ export function AdminPage() {
 							<div className="flex justify-end gap-2 pt-3 border-t border-border">
 								<Button
 									type="button"
-									variant="outline"
+									variant="secondary"
 									size="sm"
 									onClick={() => setIsAddPolicyOpen(false)}
 								>
@@ -1749,359 +1556,15 @@ export function AdminPage() {
 
 			{/* User Management Modal */}
 			{permUser && (
-				<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-xs animate-in fade-in duration-150">
-					<div className="flex w-full max-w-2xl max-h-[85vh] flex-col rounded-xl border border-border bg-card shadow-2xl overflow-hidden animate-in zoom-in-95 fade-in duration-150">
-						<div className="flex items-center justify-between px-6 py-5 border-b border-border bg-muted/20">
-							<div className="flex items-center gap-2">
-								<ShieldCheck className="h-4 w-4 text-primary" />
-								<h3 className="text-sm font-bold text-foreground">
-									Manage User: {permUser.name}
-								</h3>
-							</div>
-							<button
-								type="button"
-								onClick={() => setPermUser(null)}
-								className="p-1 rounded text-muted-foreground hover:text-foreground"
-							>
-								<X className="h-4 w-4" />
-							</button>
-						</div>
-						<div className="flex items-center gap-1 px-6 pt-3 border-b border-border">
-							{(
-								[
-									{
-										id: "permissions",
-										label: "VHost Permissions",
-										icon: ShieldCheck,
-									},
-									{ id: "topics", label: "Topic Permissions", icon: Hash },
-									{ id: "account", label: "Account", icon: UserCog },
-								] as const
-							).map((tab) => (
-								<button
-									key={tab.id}
-									type="button"
-									onClick={() => setUserModalTab(tab.id)}
-									className={`flex items-center gap-1.5 rounded-t-md border-b-2 px-3 py-2 text-xs font-medium transition-colors ${
-										userModalTab === tab.id
-											? "border-primary text-foreground"
-											: "border-transparent text-muted-foreground hover:text-foreground"
-									}`}
-								>
-									<tab.icon className="h-3.5 w-3.5" />
-									{tab.label}
-								</button>
-							))}
-						</div>
-						<div className="flex-1 min-h-0 overflow-y-auto p-6 text-sm">
-							{/* Virtual Host Permissions */}
-							{userModalTab === "permissions" && (
-								<form
-									id="permissions-form"
-									onSubmit={handleSetPermissions}
-									className="grid grid-cols-1 md:grid-cols-2 gap-6"
-								>
-									<div className="space-y-1.5 md:border-r md:border-border md:pr-6">
-										<label className="font-medium text-muted-foreground">
-											Existing Grants
-										</label>
-										{permUserGrants.length ? (
-											<div className="max-h-72 overflow-y-auto space-y-1 rounded-md border border-border p-1.5">
-												{permUserGrants.map((p) => (
-													<div
-														key={p.vhost}
-														className={`flex items-center justify-between gap-2 rounded px-2 py-1.5 ${
-															p.vhost === permVHost
-																? "bg-primary/10 text-primary"
-																: "hover:bg-muted/40"
-														}`}
-														title={`configure: ${p.configure} · write: ${p.write} · read: ${p.read}`}
-													>
-														<button
-															type="button"
-															onClick={() => setPermVHost(p.vhost)}
-															className="truncate text-left font-mono text-xs hover:underline"
-														>
-															{p.vhost}
-														</button>
-														<button
-															type="button"
-															onClick={() => handleClearPermission(p.vhost)}
-															className="shrink-0 p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-															title={`Revoke access to ${p.vhost}`}
-														>
-															<Trash2 className="h-3 w-3" />
-														</button>
-													</div>
-												))}
-											</div>
-										) : (
-											<p className="text-xs text-muted-foreground italic">
-												No virtual host access granted yet.
-											</p>
-										)}
-									</div>
-
-									<div className="space-y-4">
-										<div className="space-y-1.5">
-											<label className="font-medium text-muted-foreground">
-												Virtual Host
-											</label>
-											<Dropdown
-												value={permVHost}
-												onChange={(v) => setPermVHost(v as string)}
-												options={vhosts.map((v) => ({
-													label: v.name,
-													value: v.name,
-												}))}
-												className="w-full"
-												buttonClassName="h-10 w-full justify-between px-3 text-sm font-mono"
-												contentClassName="w-full"
-											/>
-										</div>
-
-										<div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-											<div className="space-y-1.5">
-												<label className="font-medium text-muted-foreground">
-													Configure
-												</label>
-												<input
-													type="text"
-													value={permConf}
-													onChange={(e) => setPermConf(e.target.value)}
-													placeholder=".*"
-													className="h-10 w-full rounded-md border border-border bg-muted/20 px-3 text-sm font-mono"
-												/>
-											</div>
-
-											<div className="space-y-1.5">
-												<label className="font-medium text-muted-foreground">
-													Write
-												</label>
-												<input
-													type="text"
-													value={permWrite}
-													onChange={(e) => setPermWrite(e.target.value)}
-													placeholder=".*"
-													className="h-10 w-full rounded-md border border-border bg-muted/20 px-3 text-sm font-mono"
-												/>
-											</div>
-
-											<div className="space-y-1.5">
-												<label className="font-medium text-muted-foreground">
-													Read
-												</label>
-												<input
-													type="text"
-													value={permRead}
-													onChange={(e) => setPermRead(e.target.value)}
-													placeholder=".*"
-													className="h-10 w-full rounded-md border border-border bg-muted/20 px-3 text-sm font-mono"
-												/>
-											</div>
-										</div>
-										<div className="flex justify-end">
-											<Button type="submit" size="sm" disabled={isSettingPerm}>
-												{isSettingPerm
-													? "Saving..."
-													: permUserGrants.some((p) => p.vhost === permVHost)
-														? "Update Permissions"
-														: "Grant Permissions"}
-											</Button>
-										</div>
-									</div>
-								</form>
-							)}
-
-							{/* Topic Permissions */}
-							{userModalTab === "topics" && (
-								<form
-									id="topic-permissions-form"
-									onSubmit={handleSetTopicPermission}
-									className="grid grid-cols-1 md:grid-cols-2 gap-6"
-								>
-									<div className="space-y-1.5 md:border-r md:border-border md:pr-6">
-										<label className="font-medium text-muted-foreground">
-											Existing Topic Grants
-										</label>
-										{permUserTopicGrants.length ? (
-											<div className="max-h-72 overflow-y-auto space-y-1 rounded-md border border-border p-1.5">
-												{permUserTopicGrants.map((p) => (
-													<div
-														key={`${p.vhost}:${p.exchange}`}
-														className="flex items-center justify-between gap-2 rounded px-2 py-1.5 hover:bg-muted/40"
-														title={`write: ${p.write} · read: ${p.read}`}
-													>
-														<span className="truncate font-mono text-xs">
-															{p.vhost} / {p.exchange || "(AMQP default)"}
-														</span>
-														<button
-															type="button"
-															onClick={() =>
-																handleClearTopicPermission(p.vhost)
-															}
-															className="shrink-0 p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-															title={`Revoke topic access to ${p.vhost}`}
-														>
-															<Trash2 className="h-3 w-3" />
-														</button>
-													</div>
-												))}
-											</div>
-										) : (
-											<p className="text-xs text-muted-foreground italic">
-												No topic permissions granted yet.
-											</p>
-										)}
-									</div>
-
-									<div className="space-y-4">
-										<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-											<div className="space-y-1.5">
-												<label className="font-medium text-muted-foreground">
-													Virtual Host
-												</label>
-												<Dropdown
-													value={topicPermVHost}
-													onChange={(v) => setTopicPermVHost(v as string)}
-													options={vhosts.map((v) => ({
-														label: v.name,
-														value: v.name,
-													}))}
-													className="w-full"
-													buttonClassName="h-10 w-full justify-between px-3 text-sm font-mono"
-													contentClassName="w-full"
-												/>
-											</div>
-											<div className="space-y-1.5">
-												<label className="font-medium text-muted-foreground">
-													Exchange
-												</label>
-												<Dropdown
-													value={topicPermExchange}
-													onChange={(v) => setTopicPermExchange(v as string)}
-													options={[
-														{ label: "(AMQP default)", value: "" },
-														...topicPermVHostExchanges.map((ex) => ({
-															label: ex.name,
-															value: ex.name,
-														})),
-													]}
-													className="w-full"
-													buttonClassName="h-10 w-full justify-between px-3 text-sm font-mono"
-													contentClassName="w-full"
-												/>
-											</div>
-										</div>
-
-										<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-											<div className="space-y-1.5">
-												<label className="font-medium text-muted-foreground">
-													Write regexp
-												</label>
-												<input
-													type="text"
-													value={topicPermWrite}
-													onChange={(e) => setTopicPermWrite(e.target.value)}
-													placeholder=".*"
-													className="h-10 w-full rounded-md border border-border bg-muted/20 px-3 text-sm font-mono"
-												/>
-											</div>
-											<div className="space-y-1.5">
-												<label className="font-medium text-muted-foreground">
-													Read regexp
-												</label>
-												<input
-													type="text"
-													value={topicPermRead}
-													onChange={(e) => setTopicPermRead(e.target.value)}
-													placeholder=".*"
-													className="h-10 w-full rounded-md border border-border bg-muted/20 px-3 text-sm font-mono"
-												/>
-											</div>
-										</div>
-										<div className="flex justify-end">
-											<Button
-												type="submit"
-												size="sm"
-												disabled={isSettingTopicPerm}
-											>
-												{isSettingTopicPerm
-													? "Saving..."
-													: "Set Topic Permission"}
-											</Button>
-										</div>
-									</div>
-								</form>
-							)}
-
-							{/* Update User */}
-							{userModalTab === "account" && (
-								<form
-									id="update-user-form"
-									onSubmit={handleUpdateUser}
-									className="max-w-md space-y-4"
-								>
-									<div className="space-y-1.5">
-										<label className="font-medium text-muted-foreground">
-											Tags (comma separated)
-										</label>
-										<input
-											type="text"
-											value={updateUserTags}
-											onChange={(e) => setUpdateUserTags(e.target.value)}
-											placeholder="administrator, policymaker, monitoring, management"
-											className="h-10 w-full rounded-md border border-border bg-muted/20 px-3 text-sm font-mono"
-										/>
-									</div>
-									<div className="space-y-1.5">
-										<label className="font-medium text-muted-foreground">
-											New Password (leave blank to keep current)
-										</label>
-										<input
-											type="password"
-											value={updateUserPassword}
-											onChange={(e) => setUpdateUserPassword(e.target.value)}
-											placeholder="••••••••"
-											className="h-10 w-full rounded-md border border-border bg-muted/20 px-3 text-sm font-mono"
-										/>
-									</div>
-									<div className="flex justify-end">
-										<Button type="submit" size="sm" disabled={isUpdatingUser}>
-											{isUpdatingUser ? "Saving..." : "Update User"}
-										</Button>
-									</div>
-								</form>
-							)}
-						</div>
-						<div className="flex justify-between items-center gap-2 px-6 py-4 border-t border-border bg-muted/20">
-							{permUser.name !== "guest" ? (
-								<Button
-									type="button"
-									variant="ghost"
-									size="sm"
-									onClick={() => handleDeleteUser(permUser.name)}
-									className="text-destructive hover:bg-destructive/10"
-								>
-									<Trash2 className="h-3.5 w-3.5 mr-1" />
-									Delete User
-								</Button>
-							) : (
-								<span />
-							)}
-							<Button
-								type="button"
-								variant="outline"
-								size="sm"
-								onClick={() => setPermUser(null)}
-							>
-								Close
-							</Button>
-						</div>
-					</div>
-				</div>
+				<ManageUserModal
+					user={permUser}
+					onClose={() => setPermUser(null)}
+					vhosts={vhosts}
+					permissions={permissions}
+					topicPermissions={topicPermissions}
+					onDeleteUser={handleDeleteUser}
+				/>
 			)}
-
 		</div>
 	);
 }

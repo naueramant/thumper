@@ -1,14 +1,12 @@
 import * as React from 'react'
-import { Search, SendHorizontal } from 'lucide-react'
+import { Search } from 'lucide-react'
 import { VHostSelector } from '@/components/VHostSelector/index.tsx'
 import { RefreshSelector } from '@/components/RefreshSelector/index.tsx'
 import { UserMenu } from '@/components/UserMenu/index.tsx'
 import { CommandPalette } from '@/components/CommandPalette/index.tsx'
-import { TestCollectionsDrawer } from '@/components/TestCollections/index.ts'
 
 export function Header() {
   const [isPaletteOpen, setIsPaletteOpen] = React.useState(false)
-  const [isCollectionsOpen, setIsCollectionsOpen] = React.useState(false)
 
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -39,17 +37,8 @@ export function Header() {
           </button>
         </div>
 
-        {/* Right: Clean Toolbar (Publisher Studio + VHost + Refresh Interval + User Profile) */}
+        {/* Right: Clean Toolbar (VHost + Refresh Interval + User Profile) */}
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setIsCollectionsOpen(true)}
-            className="flex items-center gap-1.5 h-8 px-2.5 rounded-md border border-border bg-muted/20 hover:bg-muted/50 text-xs font-mono text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-            title="Publisher Studio & Test Message Collections"
-          >
-            <SendHorizontal className="h-3.5 w-3.5 text-primary" />
-            <span className="hidden sm:inline">Publisher Studio</span>
-          </button>
           <VHostSelector />
           <RefreshSelector />
           <UserMenu />
@@ -59,11 +48,6 @@ export function Header() {
       <CommandPalette
         isOpen={isPaletteOpen}
         onClose={() => setIsPaletteOpen(false)}
-        onOpenCollections={() => setIsCollectionsOpen(true)}
-      />
-      <TestCollectionsDrawer
-        isOpen={isCollectionsOpen}
-        onClose={() => setIsCollectionsOpen(false)}
       />
     </>
   )

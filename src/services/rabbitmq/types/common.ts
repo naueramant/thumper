@@ -1,5 +1,8 @@
 export interface RateDetail {
   rate: number;
+  samples?: MetricSample[];
+  avg_rate?: number;
+  avg?: number;
 }
 
 export interface MetricSample {

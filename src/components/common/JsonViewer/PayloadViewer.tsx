@@ -9,6 +9,7 @@ import {
 	Download,
 	FileText,
 	FolderTree,
+	Highlighter,
 	KeyRound,
 	Search,
 	ShieldAlert,
@@ -21,6 +22,7 @@ import { generateHexDump, isBase64, tryDecodeBase64 } from "./hexUtils";
 import { JsonHighlighter } from "./JsonHighlighter";
 import { JsonTreeViewer } from "./JsonTreeViewer";
 import { parseJwt } from "./jwtUtils";
+import { useSyntaxHighlightPreference } from "./useSyntaxHighlightPreference";
 import { formatBytes, formatXml, isXml, tryParseJson } from "./utils";
 
 export interface PayloadViewerProps {
@@ -44,6 +46,8 @@ export const PayloadViewer: React.FC<PayloadViewerProps> = ({
 	const [searchQuery, setSearchQuery] = useState("");
 	const [wordWrap, setWordWrap] = useState(true);
 	const [decodeBase64Enabled, setDecodeBase64Enabled] = useState(false);
+	const { enabled: globalHighlightEnabled, toggle: toggleGlobalHighlight } =
+		useSyntaxHighlightPreference();
 
 	// Base64 detection & optional decoding
 	const isBase64Encoded = useMemo(() => isBase64(payload), [payload]);
@@ -297,9 +301,31 @@ export const PayloadViewer: React.FC<PayloadViewerProps> = ({
 							</Button>
 						)}
 
+						{/* Syntax Highlighting toggle for formatted mode */}
+						{mode === "formatted" && (
+							<Button
+								variant="ghost"
+								size="sm"
+								onClick={toggleGlobalHighlight}
+								className={`h-7 px-2 text-[11px] cursor-pointer ${
+									globalHighlightEnabled
+										? "text-primary bg-primary/10 hover:bg-primary/20"
+										: "text-muted-foreground hover:text-foreground"
+								}`}
+								title={
+									globalHighlightEnabled
+										? "Syntax highlighting is active (click to turn off)"
+										: "Syntax highlighting is off (click to turn on)"
+								}
+							>
+								<Highlighter className="w-3.5 h-3.5 mr-1" />
+								{globalHighlightEnabled ? "Highlight" : "Plain"}
+							</Button>
+						)}
+
 						{/* Quick Search */}
 						<div className="relative w-32 sm:w-40">
-							<Search className="w-3 h-3 absolute left-2 top-2 text-muted-foreground" />
+							<Search className="w-3 h-3 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
 							<input
 								type="text"
 								value={searchQuery}
@@ -463,9 +489,19 @@ export const PayloadViewer: React.FC<PayloadViewerProps> = ({
 						showLineNumbers
 					/>
 				) : mode === "formatted" && isXmlFormat && formattedXml ? (
-					<pre className="text-xs font-mono text-sky-300 overflow-x-auto leading-relaxed">
-						{formattedXml}
-					</pre>
+					<JsonHighlighter
+						content={formattedXml}
+						searchQuery={searchQuery}
+						language="xml"
+						showLineNumbers
+					/>
+				) : mode === "formatted" ? (
+					<JsonHighlighter
+						content={effectivePayload}
+						searchQuery={searchQuery}
+						language="auto"
+						showLineNumbers
+					/>
 				) : (
 					<pre className="text-xs font-mono text-foreground overflow-x-auto leading-relaxed break-all">
 						{effectivePayload}

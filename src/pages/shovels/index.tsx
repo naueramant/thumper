@@ -10,6 +10,7 @@ import {
 	CardTitle,
 } from "@/components/ui/card/index.tsx";
 import { Checkbox } from "@/components/ui/checkbox/index.tsx";
+import { Dropdown } from "@/components/ui/dropdown/index.tsx";
 import {
 	Table,
 	TableBody,
@@ -43,8 +44,8 @@ import {
 	AlertTriangle,
 	ArrowRight,
 	CheckCircle2,
+	ChevronRight,
 	Copy,
-	Eye,
 	Layers,
 	Plus,
 	RefreshCw,
@@ -595,16 +596,17 @@ export function ShovelsPage() {
 				{/* Search & State Filter */}
 				<div className="flex items-center gap-2">
 					{activeTab === "status" && (
-						<select
+						<Dropdown
 							value={stateFilter}
-							onChange={(e) => setStateFilter(e.target.value)}
-							className="h-8 px-2.5 rounded-md border border-border bg-card text-xs text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
-						>
-							<option value="all">All States</option>
-							<option value="running">Running</option>
-							<option value="terminated">Terminated / Error</option>
-							<option value="other">Starting / Other</option>
-						</select>
+							onChange={(val) => setStateFilter(val as string)}
+							options={[
+								{ label: "All States", value: "all" },
+								{ label: "Running", value: "running" },
+								{ label: "Terminated / Error", value: "terminated" },
+								{ label: "Starting / Other", value: "other" },
+							]}
+							buttonClassName="h-8 px-2.5 text-xs bg-card"
+						/>
 					)}
 					<div className="relative w-64">
 						<Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -652,14 +654,15 @@ export function ShovelsPage() {
 														<button
 															type="button"
 															onClick={() => setSelectedStatus(s)}
-															className="font-mono text-xs font-semibold text-foreground hover:text-primary transition-colors text-left"
+															className="font-mono text-xs font-semibold text-foreground hover:text-primary transition-colors text-left inline-flex items-center gap-1 group cursor-pointer"
 														>
 															{s.name}
+															<ChevronRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity text-primary" />
 														</button>
 														<div className="flex items-center gap-1.5">
 															<Badge
 																variant="outline"
-																className="text-[9px] uppercase font-mono px-1 py-0 border-border text-muted-foreground"
+																className="text-[9px] uppercase font-mono px-1.5 border-border text-muted-foreground"
 															>
 																{s.type}
 															</Badge>
@@ -791,17 +794,6 @@ export function ShovelsPage() {
 												{/* Actions */}
 												<TableCell className="text-right">
 													<div className="flex items-center justify-end gap-1">
-														<Button
-															variant="ghost"
-															size="sm"
-															className="h-6 text-[11px] px-2 text-primary hover:bg-primary/10"
-															onClick={() => setSelectedStatus(s)}
-															title="Inspect details"
-														>
-															<Eye className="h-3 w-3 mr-1" />
-															Inspect
-														</Button>
-
 														<span
 															title={
 																s.type !== "dynamic"
@@ -986,7 +978,7 @@ export function ShovelsPage() {
 
 			{/* CREATE SHOVEL MODAL */}
 			{isAddModalOpen && (
-				<div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-xs p-4 overflow-y-auto animate-in fade-in duration-200">
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-xs p-4 overflow-y-auto scrollbar-thin animate-in fade-in duration-200">
 					<Card className="w-full max-w-2xl shadow-xl border-border bg-card my-8">
 						<CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-border">
 							<div>
@@ -1012,8 +1004,8 @@ export function ShovelsPage() {
 						<form onSubmit={handleCreateSubmit}>
 							<CardContent className="space-y-4 pt-4 text-xs max-h-[70vh] overflow-y-auto scrollbar-thin">
 								{/* Quick Presets */}
-								<div className="space-y-1.5">
-									<label className="font-medium text-foreground">
+								<div className="space-y-2">
+									<label className="block font-medium text-foreground">
 										Common Presets
 									</label>
 									<div className="grid grid-cols-3 gap-2">
@@ -1075,24 +1067,24 @@ export function ShovelsPage() {
 
 								{/* VHost and Name */}
 								<div className="grid grid-cols-2 gap-3 pt-2 border-t border-border/50">
-									<div className="space-y-1.5">
-										<label className="font-medium text-foreground">
+									<div className="space-y-2">
+										<label className="block font-medium text-foreground">
 											Virtual Host <span className="text-destructive">*</span>
 										</label>
-										<select
+										<Dropdown
 											value={formVHost}
-											onChange={(e) => setFormVHost(e.target.value)}
-											className="w-full h-8 px-2.5 rounded-md border border-border bg-background text-xs font-mono text-foreground focus:ring-1 focus:ring-primary"
-										>
-											{vhosts.map((v) => (
-												<option key={v.name} value={v.name}>
-													{v.name}
-												</option>
-											))}
-										</select>
+											onChange={(v) => setFormVHost(v as string)}
+											options={vhosts.map((v) => ({
+												label: v.name,
+												value: v.name,
+											}))}
+											className="w-full"
+											buttonClassName="h-8 w-full justify-between px-2.5 text-xs font-mono"
+											contentClassName="w-full"
+										/>
 									</div>
-									<div className="space-y-1.5">
-										<label className="font-medium text-foreground">
+									<div className="space-y-2">
+										<label className="block font-medium text-foreground">
 											Shovel Name <span className="text-destructive">*</span>
 										</label>
 										<input
@@ -1117,16 +1109,15 @@ export function ShovelsPage() {
 											<label className="text-[11px] text-muted-foreground">
 												Protocol:
 											</label>
-											<select
+											<Dropdown<ShovelProtocol>
 												value={formSrcProtocol}
-												onChange={(e) =>
-													setFormSrcProtocol(e.target.value as ShovelProtocol)
-												}
-												className="h-7 px-2 rounded border border-border bg-background text-xs font-mono"
-											>
-												<option value="amqp091">AMQP 0.9.1</option>
-												<option value="amqp10">AMQP 1.0</option>
-											</select>
+												onChange={(v) => setFormSrcProtocol(v)}
+												options={[
+													{ label: "AMQP 0.9.1", value: "amqp091" },
+													{ label: "AMQP 1.0", value: "amqp10" },
+												]}
+												buttonClassName="h-7 px-2 text-xs font-mono"
+											/>
 										</div>
 									</div>
 
@@ -1252,19 +1243,25 @@ export function ShovelsPage() {
 											<label className="text-[11px] text-muted-foreground">
 												Auto-Delete Mode
 											</label>
-											<select
+											<Dropdown
 												value={formSrcDeleteAfter}
-												onChange={(e) =>
-													setFormSrcDeleteAfter(e.target.value as any)
+												onChange={(v) =>
+													setFormSrcDeleteAfter(
+														v as "never" | "queue-length" | "count",
+													)
 												}
-												className="w-full h-8 px-2.5 rounded-md border border-border bg-background text-xs font-mono"
-											>
-												<option value="never">Never (keep running)</option>
-												<option value="queue-length">
-													After initial queue drained
-												</option>
-												<option value="count">After specific count</option>
-											</select>
+												options={[
+													{ label: "Never (keep running)", value: "never" },
+													{
+														label: "After initial queue drained",
+														value: "queue-length",
+													},
+													{ label: "After specific count", value: "count" },
+												]}
+												className="w-full"
+												buttonClassName="h-8 w-full justify-between px-2.5 text-xs font-mono"
+												contentClassName="w-full"
+											/>
 										</div>
 										{formSrcDeleteAfter === "count" && (
 											<div className="space-y-1.5 col-span-2">
@@ -1298,16 +1295,15 @@ export function ShovelsPage() {
 											<label className="text-[11px] text-muted-foreground">
 												Protocol:
 											</label>
-											<select
+											<Dropdown<ShovelProtocol>
 												value={formDestProtocol}
-												onChange={(e) =>
-													setFormDestProtocol(e.target.value as ShovelProtocol)
-												}
-												className="h-7 px-2 rounded border border-border bg-background text-xs font-mono"
-											>
-												<option value="amqp091">AMQP 0.9.1</option>
-												<option value="amqp10">AMQP 1.0</option>
-											</select>
+												onChange={(v) => setFormDestProtocol(v)}
+												options={[
+													{ label: "AMQP 0.9.1", value: "amqp091" },
+													{ label: "AMQP 1.0", value: "amqp10" },
+												]}
+												buttonClassName="h-7 px-2 text-xs font-mono"
+											/>
 										</div>
 									</div>
 
@@ -1432,28 +1428,31 @@ export function ShovelsPage() {
 
 								{/* RELIABILITY SETTINGS */}
 								<div className="grid grid-cols-2 gap-3 pt-2 border-t border-border/50">
-									<div className="space-y-1.5">
-										<label className="font-medium text-foreground">
+									<div className="space-y-2">
+										<label className="block font-medium text-foreground">
 											Acknowledgement Mode
 										</label>
-										<select
+										<Dropdown<ShovelAckMode>
 											value={formAckMode}
-											onChange={(e) =>
-												setFormAckMode(e.target.value as ShovelAckMode)
-											}
-											className="w-full h-8 px-2.5 rounded-md border border-border bg-background text-xs font-mono"
-										>
-											<option value="on-confirm">
-												on-confirm (Lossless, Recommended)
-											</option>
-											<option value="on-publish">on-publish (Fast)</option>
-											<option value="no-ack">
-												no-ack (At most once, no ACKs)
-											</option>
-										</select>
+											onChange={(v) => setFormAckMode(v)}
+											options={[
+												{
+													label: "on-confirm (Lossless, Recommended)",
+													value: "on-confirm",
+												},
+												{ label: "on-publish (Fast)", value: "on-publish" },
+												{
+													label: "no-ack (At most once, no ACKs)",
+													value: "no-ack",
+												},
+											]}
+											className="w-full"
+											buttonClassName="h-8 w-full justify-between px-2.5 text-xs font-mono"
+											contentClassName="w-full"
+										/>
 									</div>
-									<div className="space-y-1.5">
-										<label className="font-medium text-foreground">
+									<div className="space-y-2">
+										<label className="block font-medium text-foreground">
 											Reconnect Delay (seconds)
 										</label>
 										<input
@@ -1472,7 +1471,7 @@ export function ShovelsPage() {
 							<CardFooter className="flex justify-end gap-2 border-t border-border pt-3">
 								<Button
 									type="button"
-									variant="outline"
+									variant="secondary"
 									size="sm"
 									onClick={() => setIsAddModalOpen(false)}
 									disabled={isSubmitting}

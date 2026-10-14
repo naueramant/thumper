@@ -15,6 +15,7 @@ import {
 } from "@/hooks/useRabbitMQ/index.ts";
 import type { QueueMessage } from "@/services/rabbitmq/types/queue.ts";
 import type { DynamicShovelDefinition } from "@/services/rabbitmq/types/shovel.ts";
+import { Dropdown } from "@/components/ui/dropdown/index.tsx";
 import { Radio } from "@/components/ui/radio/index.tsx";
 import {
 	extractXDeathEntries,
@@ -319,8 +320,8 @@ export function DlqReplayDialog({
 						)}
 
 						{/* Destination Target Type */}
-						<div className="space-y-1.5">
-							<label className="text-xs font-semibold text-foreground">
+						<div className="space-y-2">
+							<label className="block text-xs font-semibold text-foreground">
 								Replay Destination Type
 							</label>
 							<div className="grid grid-cols-2 gap-2">
@@ -362,52 +363,60 @@ export function DlqReplayDialog({
 
 						{/* Destination Queue Selector */}
 						{targetType === "queue" && (
-							<div className="space-y-1">
-								<label className="text-xs font-semibold text-foreground">
+							<div className="space-y-2">
+								<label className="block text-xs font-semibold text-foreground">
 									Destination Queue
 								</label>
 								<div className="flex gap-1.5">
-									<select
+									<Dropdown
 										value={destQueue}
-										onChange={(e) => setDestQueue(e.target.value)}
-										className="flex-1 h-9 rounded-md border border-border bg-background px-3 text-xs font-mono focus:outline-none focus:border-primary"
-									>
-										<option value="">Select queue...</option>
-										{allQueues
-											.filter((q) => q.name !== sourceQueue)
-											.map((q) => (
-												<option key={q.name} value={q.name}>
-													{q.name} ({q.type})
-												</option>
-											))}
-									</select>
+										onChange={(val) => setDestQueue(val as string)}
+										options={[
+											{ label: "Select queue...", value: "" },
+											...allQueues
+												.filter((q) => q.name !== sourceQueue)
+												.map((q) => ({
+													label: `${q.name} (${q.type})`,
+													value: q.name,
+												})),
+										]}
+										searchable
+										searchPlaceholder="Filter queues..."
+										className="flex-1"
+										buttonClassName="h-9 w-full justify-between px-3 text-xs font-mono"
+										contentClassName="w-full"
+									/>
 								</div>
 							</div>
 						)}
 
 						{/* Destination Exchange & Key */}
 						{targetType === "exchange" && (
-							<div className="space-y-2">
-								<div className="space-y-1">
-									<label className="text-xs font-semibold text-foreground">
+							<div className="space-y-3">
+								<div className="space-y-2">
+									<label className="block text-xs font-semibold text-foreground">
 										Destination Exchange
 									</label>
-									<select
+									<Dropdown
 										value={destExchange}
-										onChange={(e) => setDestExchange(e.target.value)}
-										className="w-full h-9 rounded-md border border-border bg-background px-3 text-xs font-mono focus:outline-none focus:border-primary"
-									>
-										<option value="">(AMQP default direct)</option>
-										{allExchanges.map((ex) => (
-											<option key={ex.name} value={ex.name}>
-												{ex.name} [{ex.type}]
-											</option>
-										))}
-									</select>
+										onChange={(val) => setDestExchange(val as string)}
+										options={[
+											{ label: "(AMQP default direct)", value: "" },
+											...allExchanges.map((ex) => ({
+												label: `${ex.name} [${ex.type}]`,
+												value: ex.name,
+											})),
+										]}
+										searchable
+										searchPlaceholder="Filter exchanges..."
+										className="w-full"
+										buttonClassName="h-9 w-full justify-between px-3 text-xs font-mono"
+										contentClassName="w-full"
+									/>
 								</div>
 
-								<div className="space-y-1">
-									<label className="text-xs font-semibold text-foreground">
+								<div className="space-y-2">
+									<label className="block text-xs font-semibold text-foreground">
 										Routing Key
 									</label>
 									<input
@@ -424,7 +433,7 @@ export function DlqReplayDialog({
 						{/* Batch Count Options (if not single message) */}
 						{!singleMessage && (
 							<div className="space-y-2 pt-1 border-t border-border">
-								<label className="text-xs font-semibold text-foreground">
+								<label className="block text-xs font-semibold text-foreground">
 									Replay Volume
 								</label>
 								<div className="flex items-center gap-4 pt-0.5">
@@ -464,7 +473,7 @@ export function DlqReplayDialog({
 					<CardFooter className="p-4 border-t border-border bg-card/60 flex items-center justify-between">
 						<Button
 							type="button"
-							variant="outline"
+							variant="secondary"
 							size="sm"
 							onClick={onClose}
 							disabled={isSubmitting}

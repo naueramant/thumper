@@ -32,7 +32,7 @@ export default defineConfig({
 				configure: (proxy) => {
 					// RabbitMQ's management API still sends `WWW-Authenticate: Basic` on 401s
 					// even for XHR/fetch requests, which makes the browser pop its own native
-					// credential dialog. Strip it so Thumber's own login/session-expiry UI
+					// credential dialog. Strip it so Thumper's own login/session-expiry UI
 					// handles the failure instead.
 					proxy.on("proxyRes", (proxyRes) => {
 						delete proxyRes.headers["www-authenticate"];

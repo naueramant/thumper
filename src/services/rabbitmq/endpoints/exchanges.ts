@@ -4,6 +4,7 @@ import type { ListQueryOptions, PaginatedResult } from '../types/common.ts';
 import type {
   CreateExchangeRequest,
   Exchange,
+  ExchangeQueryOptions,
   PublishMessageRequest,
   PublishMessageResponse,
 } from '../types/exchange.ts';
@@ -41,11 +42,18 @@ export class ExchangesApi {
   }
 
   /**
-   * Retrieves an exchange by name in a given virtual host.
+   * Retrieves an exchange by name in a given virtual host with optional metrics query params.
    */
-  async getExchange(vhost: string, name: string): Promise<Exchange> {
+  async getExchange(
+    vhost: string,
+    name: string,
+    options?: ExchangeQueryOptions
+  ): Promise<Exchange> {
     return this.client.request<Exchange>(
-      `/api/exchanges/${encodeVhost(vhost)}/${encodeName(name)}`
+      `/api/exchanges/${encodeVhost(vhost)}/${encodeName(name)}`,
+      {
+        query: options as Record<string, unknown>,
+      }
     );
   }
 

@@ -1,7 +1,6 @@
 import { QuickFilters } from "@/components/common/QuickFilters/index.tsx";
 import { TableFilters } from "@/components/common/TableFilters/index.tsx";
 import { Badge } from "@/components/ui/badge/index.tsx";
-import { Button } from "@/components/ui/button/index.tsx";
 import {
 	Card,
 	CardContent,
@@ -30,7 +29,7 @@ import {
 	type SortingState,
 	useReactTable,
 } from "@tanstack/react-table";
-import { ArrowDown, ArrowUp, ArrowUpDown, Eye, Radio, Search } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronRight, Radio, Search } from "lucide-react";
 import * as React from "react";
 
 const columnHelper = createColumnHelper<Channel>();
@@ -188,10 +187,11 @@ export function ChannelsPage() {
 						<Link
 							to="/channels/$name"
 							params={{ name: encodeURIComponent(ch.name) }}
-							className="flex flex-col max-w-sm group"
+							className="flex flex-col max-w-sm group cursor-pointer"
 						>
-							<span className="font-semibold text-foreground group-hover:text-primary transition-colors font-mono text-xs truncate">
+							<span className="font-semibold text-foreground group-hover:text-primary transition-colors font-mono text-xs truncate flex items-center gap-1">
 								{info.getValue()}
+								<ChevronRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity text-primary flex-shrink-0" />
 							</span>
 							<span className="text-[11px] text-muted-foreground font-mono">
 								ch #{ch.number ?? 1} &bull; node: {ch.node}
@@ -225,7 +225,7 @@ export function ChannelsPage() {
 										? "warning"
 										: "outline"
 							}
-							className="text-[10px] uppercase font-mono"
+							className="text-[10px] capitalize"
 						>
 							{state}
 						</Badge>
@@ -240,7 +240,7 @@ export function ChannelsPage() {
 					return (
 						<Badge
 							variant="outline"
-							className="font-mono text-[10px] uppercase"
+							className="text-[10px] capitalize"
 						>
 							{isConfirm ? "Confirm" : isTransactional ? "Tx" : "Standard"}
 						</Badge>
@@ -299,26 +299,6 @@ export function ChannelsPage() {
 					),
 				},
 			),
-			columnHelper.display({
-				id: "actions",
-				header: "",
-				cell: (info) => (
-					<Link
-						to="/channels/$name"
-						params={{ name: encodeURIComponent(info.row.original.name) }}
-					>
-						<Button
-							variant="ghost"
-							size="sm"
-							className="h-6 text-[11px] px-2 text-primary hover:bg-primary/10"
-							title="Explore Channel Details"
-						>
-							<Eye className="h-3 w-3 mr-1" />
-							Explore
-						</Button>
-					</Link>
-				),
-			}),
 		],
 		[],
 	);
@@ -343,8 +323,15 @@ export function ChannelsPage() {
 						</h1>
 					</div>
 					<p className="text-xs text-muted-foreground">
-						Active multiplexed AMQP sessions and consumer flow control in vhost{" "}
-						<strong className="text-primary font-mono">{selectedVHost}</strong>
+						Active multiplexed AMQP sessions and consumer flow control{" "}
+						{selectedVHost === "all" ? (
+							"across all virtual hosts"
+						) : (
+							<>
+								in vhost{" "}
+								<strong className="text-primary font-mono">{selectedVHost}</strong>
+							</>
+						)}
 					</p>
 				</div>
 			</div>

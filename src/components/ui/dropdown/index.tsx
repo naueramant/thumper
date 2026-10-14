@@ -1,5 +1,5 @@
 import { cn } from "@/utilities/cn/index.ts";
-import { Check, ChevronDown, Search } from "lucide-react";
+import { Check, ChevronDown, Plus, Search, X } from "lucide-react";
 import * as React from "react";
 import { createPortal } from "react-dom";
 
@@ -15,6 +15,9 @@ export interface DropdownProps<T = string | number> {
 	value?: T;
 	options: DropdownOption<T>[];
 	onChange: (value: T) => void;
+	placeholder?: string;
+	clearable?: boolean;
+	allowCustom?: boolean;
 	searchable?: boolean;
 	searchPlaceholder?: string;
 	align?: "left" | "right";
@@ -86,6 +89,9 @@ export function Dropdown<T = string | number>({
 	value,
 	options,
 	onChange,
+	placeholder,
+	clearable = false,
+	allowCustom = false,
 	searchable = false,
 	searchPlaceholder = "Search...",
 	align = "right",
@@ -95,6 +101,7 @@ export function Dropdown<T = string | number>({
 }: DropdownProps<T>) {
 	const [isOpen, setIsOpen] = React.useState(false);
 	const [search, setSearch] = React.useState("");
+	const [highlightedIndex, setHighlightedIndex] = React.useState(-1);
 	const triggerRef = React.useRef<HTMLButtonElement>(null);
 	const menuRef = React.useRef<HTMLDivElement>(null);
 	const searchInputRef = React.useRef<HTMLInputElement>(null);
@@ -107,6 +114,10 @@ export function Dropdown<T = string | number>({
 	React.useEffect(() => {
 		if (isOpen && searchable) {
 			searchInputRef.current?.focus({ preventScroll: true });
+			setHighlightedIndex(-1);
+		} else if (!isOpen) {
+			setSearch("");
+			setHighlightedIndex(-1);
 		}
 	}, [isOpen, searchable]);
 
@@ -122,6 +133,15 @@ export function Dropdown<T = string | number>({
 
 	const selectedOption = options.find((opt) => opt.value === value);
 	const isFullWidth = contentClassName?.split(/\s+/).includes("w-full");
+
+	const isCustomSearchValue =
+		allowCustom &&
+		search.trim() !== "" &&
+		!options.some(
+			(opt) =>
+				String(opt.value).toLowerCase() === search.trim().toLowerCase() ||
+				opt.label.toLowerCase() === search.trim().toLowerCase(),
+		);
 
 	React.useEffect(() => {
 		function handleClickOutside(event: MouseEvent) {
@@ -162,12 +182,34 @@ export function Dropdown<T = string | number>({
 				{trigger ? (
 					trigger
 				) : (
-					<div className="flex items-center gap-1.5">
+					<div className="flex items-center gap-1.5 min-w-0 flex-1 text-left">
 						{selectedOption?.icon}
-						<span className="font-medium truncate">
-							{selectedOption?.label}
+						<span
+							className={cn(
+								"font-medium truncate",
+								!selectedOption && !value && "text-muted-foreground font-normal",
+							)}
+						>
+							{selectedOption?.label ||
+								(value !== undefined && value !== ""
+									? String(value)
+									: placeholder || "Select...")}
 						</span>
 					</div>
+				)}
+				{clearable && value !== undefined && value !== "" && (
+					<span
+						role="button"
+						tabIndex={-1}
+						onClick={(e) => {
+							e.stopPropagation();
+							onChange("" as unknown as T);
+						}}
+						className="p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground shrink-0 cursor-pointer"
+						title="Clear selection"
+					>
+						<X className="h-3 w-3" />
+					</span>
 				)}
 				<ChevronDown
 					className={cn(
@@ -198,53 +240,137 @@ export function Dropdown<T = string | number>({
 					>
 						{searchable && (
 							<div className="relative mb-1">
-								<Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+								<Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
 								<input
 									type="text"
 									placeholder={searchPlaceholder}
 									value={search}
-									onChange={(e) => setSearch(e.target.value)}
+									onChange={(e) => {
+										setSearch(e.target.value);
+										setHighlightedIndex(-1);
+									}}
+									onKeyDown={(e) => {
+										if (e.key === "ArrowDown") {
+											e.preventDefault();
+											const totalCount =
+												filteredOptions.length + (isCustomSearchValue ? 1 : 0);
+											setHighlightedIndex((prev) =>
+												totalCount === 0
+													? -1
+													: prev < totalCount - 1
+														? prev + 1
+														: 0,
+											);
+										} else if (e.key === "ArrowUp") {
+											e.preventDefault();
+											const totalCount =
+												filteredOptions.length + (isCustomSearchValue ? 1 : 0);
+											setHighlightedIndex((prev) =>
+												totalCount === 0
+													? -1
+													: prev > 0
+														? prev - 1
+														: totalCount - 1,
+											);
+										} else if (e.key === "Enter") {
+											e.preventDefault();
+											if (
+												highlightedIndex >= 0 &&
+												highlightedIndex < filteredOptions.length
+											) {
+												onChange(filteredOptions[highlightedIndex].value);
+												setIsOpen(false);
+												setSearch("");
+											} else if (
+												isCustomSearchValue &&
+												highlightedIndex === filteredOptions.length
+											) {
+												onChange(search.trim() as unknown as T);
+												setIsOpen(false);
+												setSearch("");
+											} else if (filteredOptions.length > 0) {
+												onChange(filteredOptions[0].value);
+												setIsOpen(false);
+												setSearch("");
+											} else if (isCustomSearchValue) {
+												onChange(search.trim() as unknown as T);
+												setIsOpen(false);
+												setSearch("");
+											}
+										} else if (e.key === "Escape") {
+											e.preventDefault();
+											setIsOpen(false);
+										}
+									}}
 									ref={searchInputRef}
 									className="h-7 w-full rounded border border-border/80 bg-muted/30 pl-8 pr-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
 								/>
 							</div>
 						)}
 
-						<div className="max-h-56 overflow-y-auto space-y-0.5">
-							{filteredOptions.length > 0 ? (
-								filteredOptions.map((opt) => {
-									const isSelected = opt.value === value;
-									return (
+						<div className="max-h-56 overflow-y-auto space-y-0.5 scrollbar-thin">
+							{filteredOptions.length > 0 || isCustomSearchValue ? (
+								<>
+									{filteredOptions.map((opt, idx) => {
+										const isSelected = opt.value === value;
+										const isHighlighted = highlightedIndex === idx;
+										return (
+											<button
+												key={String(opt.value)}
+												type="button"
+												role="option"
+												aria-selected={isSelected}
+												onMouseEnter={() => setHighlightedIndex(idx)}
+												onClick={() => {
+													onChange(opt.value);
+													setIsOpen(false);
+													setSearch("");
+												}}
+												className={cn(
+													"flex w-full items-center justify-between gap-2 rounded px-2 py-1.5 text-left text-xs transition-colors hover:bg-muted/80 cursor-pointer",
+													isSelected
+														? "bg-primary/10 text-primary font-semibold"
+														: isHighlighted
+															? "bg-muted/80 text-foreground"
+															: "text-foreground",
+												)}
+											>
+												<div className="flex items-center gap-2 truncate">
+													{opt.icon}
+													<span className="truncate">{opt.label}</span>
+												</div>
+												<div className="flex items-center gap-1 shrink-0 text-[10px] text-muted-foreground font-mono">
+													{opt.subLabel && <span>{opt.subLabel}</span>}
+													{isSelected && (
+														<Check className="h-3 w-3 text-primary ml-1" />
+													)}
+												</div>
+											</button>
+										);
+									})}
+									{isCustomSearchValue && (
 										<button
-											key={String(opt.value)}
 											type="button"
 											role="option"
-											aria-selected={isSelected}
+											onMouseEnter={() =>
+												setHighlightedIndex(filteredOptions.length)
+											}
 											onClick={() => {
-												onChange(opt.value);
+												onChange(search.trim() as unknown as T);
 												setIsOpen(false);
 												setSearch("");
 											}}
 											className={cn(
-												"flex w-full items-center justify-between gap-2 rounded px-2 py-1.5 text-left text-xs transition-colors hover:bg-muted/80",
-												isSelected
-													? "bg-primary/10 text-primary font-semibold"
-													: "text-foreground",
+												"flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs transition-colors hover:bg-muted/80 text-primary border-t border-border/40 mt-1 pt-1.5 font-mono cursor-pointer",
+												highlightedIndex === filteredOptions.length &&
+													"bg-muted/80",
 											)}
 										>
-											<div className="flex items-center gap-2 truncate">
-												{opt.icon}
-												<span className="truncate">{opt.label}</span>
-											</div>
-											<div className="flex items-center gap-1 shrink-0 text-[10px] text-muted-foreground font-mono">
-												{opt.subLabel && <span>{opt.subLabel}</span>}
-												{isSelected && (
-													<Check className="h-3 w-3 text-primary ml-1" />
-												)}
-											</div>
+											<Plus className="h-3 w-3 shrink-0" />
+											<span className="truncate">Use &ldquo;{search.trim()}&rdquo;</span>
 										</button>
-									);
-								})
+									)}
+								</>
 							) : (
 								<div className="p-2 text-center text-xs text-muted-foreground">
 									No results found

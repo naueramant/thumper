@@ -10,7 +10,6 @@ import {
   ShieldCheck,
   Server,
   Shovel,
-  SendHorizontal,
   X,
 } from 'lucide-react'
 import { useRabbitQueues, useRabbitExchanges, useRabbitOverview, useRabbitShovelPlugin } from '@/hooks/useRabbitMQ/index.ts'
@@ -19,10 +18,9 @@ import { useVHost } from '@/hooks/useVHost/index.ts'
 interface CommandPaletteProps {
   isOpen: boolean
   onClose: () => void
-  onOpenCollections?: () => void
 }
 
-export function CommandPalette({ isOpen, onClose, onOpenCollections }: CommandPaletteProps) {
+export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
   const navigate = useNavigate()
   const [query, setQuery] = React.useState('')
   const [activeIndex, setActiveIndex] = React.useState(0)
@@ -73,7 +71,13 @@ export function CommandPalette({ isOpen, onClose, onOpenCollections }: CommandPa
 
   const cleanQuery = query.trim().toLowerCase()
 
-  const navItems = [
+  const navItems: Array<{
+    label: string
+    to: string
+    icon: React.ComponentType<{ className?: string }>
+    category: string
+    action?: () => void
+  }> = [
     { label: 'Overview', to: '/overview', icon: LayoutDashboard, category: 'Navigation' },
     { label: 'Connections', to: '/connections', icon: ArrowLeftRight, category: 'Navigation' },
     { label: 'Channels', to: '/channels', icon: Radio, category: 'Navigation' },
@@ -83,9 +87,6 @@ export function CommandPalette({ isOpen, onClose, onOpenCollections }: CommandPa
       ? [{ label: 'Shovels', to: '/shovels', icon: Shovel, category: 'Navigation' }]
       : []),
     { label: 'Administration Hub', to: '/admin', icon: ShieldCheck, category: 'Navigation' },
-    ...(onOpenCollections
-      ? [{ label: 'Publisher Studio', to: '#collections', action: onOpenCollections, icon: SendHorizontal, category: 'Tools' }]
-      : []),
   ]
 
   const filteredNav = navItems.filter((i) => i.label.toLowerCase().includes(cleanQuery))

@@ -230,12 +230,20 @@ export class RabbitMQClient {
 			case 401:
 				if (typeof window !== "undefined") {
 					window.dispatchEvent(
-						new CustomEvent(UNAUTHORIZED_EVENT, { detail: { endpoint } }),
+						new CustomEvent(UNAUTHORIZED_EVENT, {
+							detail: { endpoint, reason, error: errorData?.error },
+						}),
 					);
 				}
-				throw new AuthenticationError(message, endpoint);
+				throw new AuthenticationError(message, endpoint, {
+					reason,
+					error: errorData?.error,
+				});
 			case 403:
-				throw new ForbiddenError(message, endpoint);
+				throw new ForbiddenError(message, endpoint, {
+					reason,
+					error: errorData?.error,
+				});
 			case 404:
 				throw new NotFoundError(message, endpoint);
 			case 409:

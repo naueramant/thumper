@@ -108,10 +108,11 @@ export function ConnectionStatusProvider({
 	const updateClusterUrl = React.useCallback(
 		async (newUrl: string): Promise<boolean> => {
 			setAuthClusterUrl(newUrl);
+			queryClient.clear();
 			// Trigger immediate check with new URL
 			return await checkConnection();
 		},
-		[setAuthClusterUrl, checkConnection],
+		[setAuthClusterUrl, queryClient, checkConnection],
 	);
 
 	// Listen to QueryCache events for passive connection monitoring
@@ -139,11 +140,11 @@ export function ConnectionStatusProvider({
 				// parallel queries in-flight while the backend is flapping/down.
 			} else if (actionType === "error") {
 				const error = query.state.error;
-				// Don't treat 401/403 as general network disconnect (401 triggers session redirect)
-				if (
-					error instanceof RabbitMQApiError &&
-					(error.status === 401 || error.status === 403)
-				) {
+				// Don't treat 4xx client errors (400 Bad Request, 401 Unauthorized, 403 Forbidden,
+				// 404 Not Found, 409 Conflict, etc.) as network disconnects.
+				// A 4xx response means the RabbitMQ server was reached and responded with an HTTP client error.
+				// Only NetworkError (fetch failed, timeout, offline) or 5xx server errors indicate connection loss.
+				if (error instanceof RabbitMQApiError && error.status < 500) {
 					return;
 				}
 

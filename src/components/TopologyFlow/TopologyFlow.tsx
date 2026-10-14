@@ -13,6 +13,7 @@ import {
 import '@xyflow/react/dist/style.css'
 import { Share2, Layers, Radio, ChevronDown, ChevronUp } from 'lucide-react'
 
+import { cn } from '@/utilities/cn/index.ts'
 import { useTheme } from '@/hooks/useTheme'
 import { ExchangeNode } from './ExchangeNode'
 import { QueueNode } from './QueueNode'
@@ -142,9 +143,12 @@ export const TopologyFlow: React.FC<TopologyFlowProps> = ({
   return (
     <div
       style={{ height }}
-      className={`relative w-full rounded-xl border border-border overflow-hidden transition-colors ${
-        isDark ? 'bg-[#0e1015]' : 'bg-slate-50/70'
-      } ${className}`}
+      className={cn(
+        "relative w-full rounded-xl border border-border overflow-hidden transition-colors",
+        isDark ? "bg-[#0e1015]" : "bg-slate-50/70",
+        height === "100%" && "h-full flex-1 min-h-0",
+        className
+      )}
     >
       <ReactFlow
         nodes={nodes}

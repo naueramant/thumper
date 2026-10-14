@@ -45,6 +45,7 @@ import {
 	TrendingDown,
 	TrendingUp,
 	Zap,
+	Lock,
 } from "lucide-react";
 import * as React from "react";
 
@@ -61,7 +62,7 @@ export function VHostDetailPage() {
 	const isAuthorized =
 		user?.tags?.some((tag) => ADMIN_TAGS.includes(tag)) ?? false;
 
-	const { data: vhost, isLoading } = useRabbitVHostDetail(vhostName);
+	const { data: vhost, isLoading, error: vhostError } = useRabbitVHostDetail(vhostName);
 	const { data: allPermissions = [] } = useRabbitPermissions();
 	const { data: allTopicPermissions = [] } = useRabbitTopicPermissions();
 	const { data: users = [] } = useRabbitUsers();
@@ -236,22 +237,49 @@ export function VHostDetailPage() {
 		);
 	}
 
-	if (!vhost) {
+	if (vhostError || !vhost) {
+		const isForbidden =
+			(vhostError as any)?.status === 401 ||
+			(vhostError as any)?.status === 403;
 		return (
 			<div className="space-y-4">
 				<Breadcrumbs>
-					<Link to="/admin/$tab" params={{ tab: "vhosts" }} className="hover:text-foreground transition-colors">
+					<Link
+						to="/admin/$tab"
+						params={{ tab: "vhosts" }}
+						className="hover:text-foreground transition-colors"
+					>
 						Admin
 					</Link>
 					<ChevronRight className="h-3 w-3" />
-					<Link to="/admin/$tab" params={{ tab: "vhosts" }} className="hover:text-foreground transition-colors">
+					<Link
+						to="/admin/$tab"
+						params={{ tab: "vhosts" }}
+						className="hover:text-foreground transition-colors"
+					>
 						Virtual Hosts
 					</Link>
 					<ChevronRight className="h-3 w-3" />
 					<span className="text-foreground font-medium">{vhostName}</span>
 				</Breadcrumbs>
-				<div className="flex items-center justify-center h-48 text-muted-foreground text-sm">
-					Virtual host &quot;{vhostName}&quot; not found.
+				<div className="flex flex-col items-center justify-center h-64 text-center p-6 border rounded-xl border-dashed border-border/80">
+					{isForbidden ? (
+						<>
+							<div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500 mb-3">
+								<Lock className="h-6 w-6" />
+							</div>
+							<h3 className="text-base font-semibold text-foreground">
+								Access Restricted
+							</h3>
+							<p className="text-sm text-muted-foreground mt-1 max-w-md">
+								You do not have permissions to inspect virtual host &quot;{vhostName}&quot;.
+							</p>
+						</>
+					) : (
+						<div className="text-muted-foreground text-sm">
+							Virtual host &quot;{vhostName}&quot; not found.
+						</div>
+					)}
 				</div>
 			</div>
 		);

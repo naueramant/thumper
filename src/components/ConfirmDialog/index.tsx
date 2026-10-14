@@ -77,7 +77,7 @@ export function ConfirmDialogProvider({
 						</CardHeader>
 						<CardContent className="pt-4 flex justify-end gap-2">
 							<Button
-								variant="outline"
+								variant="secondary"
 								size="sm"
 								onClick={() => close(false)}
 								className="h-8 text-xs"

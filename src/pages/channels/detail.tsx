@@ -142,6 +142,11 @@ export function ChannelDetailPage() {
 								</Badge>
 							</div>
 							<p className="text-xs text-muted-foreground">
+								VHost:{" "}
+								<span className="font-mono text-foreground/80">
+									{channel?.vhost || "—"}
+								</span>
+								{" • "}
 								Connection:{" "}
 								<Link
 									to="/connections/$name"
@@ -321,20 +326,28 @@ export function ChannelDetailPage() {
 								</div>
 							</div>
 
-							<div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs">
+							<div className="border-t border-border/50 pt-4 grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
 								<div>
 									<div className="text-[10px] text-muted-foreground uppercase font-semibold">
 										Username
 									</div>
-									<div className="font-mono text-foreground">
-										{channel?.user}
+									<div className="font-mono text-foreground text-sm truncate">
+										{channel?.user || "—"}
+									</div>
+								</div>
+								<div>
+									<div className="text-[10px] text-muted-foreground uppercase font-semibold">
+										VHost
+									</div>
+									<div className="font-mono text-foreground text-sm truncate">
+										{channel?.vhost || "—"}
 									</div>
 								</div>
 								<div>
 									<div className="text-[10px] text-muted-foreground uppercase font-semibold">
 										Messages Uncommitted
 									</div>
-									<div className="font-mono text-foreground">
+									<div className="font-mono text-foreground text-sm">
 										{channel?.messages_uncommitted ?? 0}
 									</div>
 								</div>
@@ -342,7 +355,7 @@ export function ChannelDetailPage() {
 									<div className="text-[10px] text-muted-foreground uppercase font-semibold">
 										Acks Uncommitted
 									</div>
-									<div className="font-mono text-foreground">
+									<div className="font-mono text-foreground text-sm">
 										{channel?.acks_uncommitted ?? 0}
 									</div>
 								</div>

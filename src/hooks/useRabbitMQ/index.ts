@@ -1,5 +1,6 @@
 import { getRabbitMQClient } from "@/hooks/useAuth/index.ts";
 import { useRefreshInterval } from "@/hooks/useRefreshInterval/index.ts";
+import { NotFoundError, RabbitMQApiError } from "@/services/rabbitmq/errors.ts";
 import type {
 	Binding,
 	CreateBindingRequest,
@@ -10,6 +11,7 @@ import type { Consumer } from "@/services/rabbitmq/types/consumer.ts";
 import type {
 	CreateExchangeRequest,
 	Exchange,
+	ExchangeQueryOptions,
 	PublishMessageRequest,
 	PublishMessageResponse,
 } from "@/services/rabbitmq/types/exchange.ts";
@@ -28,6 +30,7 @@ import type {
 	GetMessagesRequest,
 	Queue,
 	QueueMessage,
+	QueueQueryOptions,
 } from "@/services/rabbitmq/types/queue.ts";
 import type {
 	CreateUserRequest,
@@ -42,6 +45,7 @@ import type {
 	DynamicShovelDefinition,
 	ShovelStatus,
 } from "@/services/rabbitmq/types/shovel.ts";
+import type { OverviewQueryOptions } from "@/services/rabbitmq/types/overview.ts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 export interface FeatureFlag {
@@ -84,14 +88,23 @@ export interface ShovelItem {
 	};
 }
 
-export function useRabbitOverview() {
+const DEFAULT_OVERVIEW_OPTIONS: OverviewQueryOptions = {
+	lengths_age: 3600,
+	lengths_incr: 60,
+	msg_rates_age: 3600,
+	msg_rates_incr: 60,
+};
+
+export function useRabbitOverview(
+	options: OverviewQueryOptions = DEFAULT_OVERVIEW_OPTIONS,
+) {
 	const { intervalMs } = useRefreshInterval();
 
 	return useQuery({
-		queryKey: ["rabbit", "overview"],
+		queryKey: ["rabbit", "overview", options],
 		queryFn: async () => {
 			const client = getRabbitMQClient();
-			return await client.overview.getOverview();
+			return await client.overview.getOverview(options);
 		},
 		refetchInterval: intervalMs === 0 ? false : intervalMs,
 	});
@@ -111,6 +124,13 @@ export function useRabbitNodes() {
 	});
 }
 
+function isNotFoundError(err: unknown): boolean {
+	return (
+		err instanceof NotFoundError ||
+		(err instanceof RabbitMQApiError && err.status === 404)
+	);
+}
+
 export function useRabbitQueues(vhost?: string) {
 	const { intervalMs } = useRefreshInterval();
 
@@ -118,27 +138,43 @@ export function useRabbitQueues(vhost?: string) {
 		queryKey: ["rabbit", "queues", vhost],
 		queryFn: async () => {
 			const client = getRabbitMQClient();
-			let res: Queue[] | { items: Queue[] };
-			if (vhost && vhost !== "all") {
-				res = await client.queues.getQueuesByVhost(vhost);
-			} else {
-				res = await client.queues.getQueues();
+			try {
+				let res: Queue[] | { items: Queue[] };
+				if (vhost && vhost !== "all") {
+					res = await client.queues.getQueuesByVhost(vhost);
+				} else {
+					res = await client.queues.getQueues();
+				}
+				return Array.isArray(res) ? res : res.items || [];
+			} catch (err) {
+				if (isNotFoundError(err)) return [];
+				throw err;
 			}
-			return Array.isArray(res) ? res : res.items || [];
 		},
 		refetchInterval: intervalMs === 0 ? false : intervalMs,
 	});
 }
 
-export function useRabbitQueueDetail(vhost: string, name: string) {
+const DEFAULT_QUEUE_OPTIONS: QueueQueryOptions = {
+	lengths_age: 3600,
+	lengths_incr: 60,
+	msg_rates_age: 3600,
+	msg_rates_incr: 60,
+};
+
+export function useRabbitQueueDetail(
+	vhost: string,
+	name: string,
+	options: QueueQueryOptions = DEFAULT_QUEUE_OPTIONS,
+) {
 	const { intervalMs } = useRefreshInterval();
 
 	return useQuery<Queue | null>({
-		queryKey: ["rabbit", "queue", vhost, name],
+		queryKey: ["rabbit", "queue", vhost, name, options],
 		queryFn: async () => {
 			if (!vhost || !name) return null;
 			const client = getRabbitMQClient();
-			return await client.queues.getQueue(vhost, name);
+			return await client.queues.getQueue(vhost, name, options);
 		},
 		enabled: Boolean(vhost && name),
 		refetchInterval: intervalMs === 0 ? false : intervalMs,
@@ -164,27 +200,41 @@ export function useRabbitExchanges(vhost?: string) {
 		queryKey: ["rabbit", "exchanges", vhost],
 		queryFn: async () => {
 			const client = getRabbitMQClient();
-			let res: Exchange[] | { items: Exchange[] };
-			if (vhost && vhost !== "all") {
-				res = await client.exchanges.getExchangesByVhost(vhost);
-			} else {
-				res = await client.exchanges.getExchanges();
+			try {
+				let res: Exchange[] | { items: Exchange[] };
+				if (vhost && vhost !== "all") {
+					res = await client.exchanges.getExchangesByVhost(vhost);
+				} else {
+					res = await client.exchanges.getExchanges();
+				}
+				return Array.isArray(res) ? res : res.items || [];
+			} catch (err) {
+				if (isNotFoundError(err)) return [];
+				throw err;
 			}
-			return Array.isArray(res) ? res : res.items || [];
 		},
 		refetchInterval: intervalMs === 0 ? false : intervalMs,
 	});
 }
 
-export function useRabbitExchangeDetail(vhost: string, name: string) {
+const DEFAULT_EXCHANGE_OPTIONS: ExchangeQueryOptions = {
+	msg_rates_age: 3600,
+	msg_rates_incr: 60,
+};
+
+export function useRabbitExchangeDetail(
+	vhost: string,
+	name: string,
+	options: ExchangeQueryOptions = DEFAULT_EXCHANGE_OPTIONS,
+) {
 	const { intervalMs } = useRefreshInterval();
 
 	return useQuery<Exchange | null>({
-		queryKey: ["rabbit", "exchange", vhost, name],
+		queryKey: ["rabbit", "exchange", vhost, name, options],
 		queryFn: async () => {
 			if (!vhost || !name) return null;
 			const client = getRabbitMQClient();
-			return await client.exchanges.getExchange(vhost, name);
+			return await client.exchanges.getExchange(vhost, name, options);
 		},
 		enabled: Boolean(vhost && name),
 		refetchInterval: intervalMs === 0 ? false : intervalMs,
@@ -214,10 +264,15 @@ export function useRabbitBindings(vhost?: string) {
 		queryKey: ["rabbit", "all-bindings", vhost],
 		queryFn: async () => {
 			const client = getRabbitMQClient();
-			if (vhost && vhost !== "all") {
-				return await client.bindings.getBindingsByVhost(vhost);
+			try {
+				if (vhost && vhost !== "all") {
+					return await client.bindings.getBindingsByVhost(vhost);
+				}
+				return await client.bindings.getBindings();
+			} catch (err) {
+				if (isNotFoundError(err)) return [];
+				throw err;
 			}
-			return await client.bindings.getBindings();
 		},
 		refetchInterval: intervalMs === 0 ? false : intervalMs,
 	});
@@ -230,13 +285,18 @@ export function useRabbitConnections(vhost?: string) {
 		queryKey: ["rabbit", "connections", vhost],
 		queryFn: async () => {
 			const client = getRabbitMQClient();
-			let res: Connection[] | { items: Connection[] };
-			if (vhost && vhost !== "all") {
-				res = await client.connections.getConnectionsByVhost(vhost);
-			} else {
-				res = await client.connections.getConnections();
+			try {
+				let res: Connection[] | { items: Connection[] };
+				if (vhost && vhost !== "all") {
+					res = await client.connections.getConnectionsByVhost(vhost);
+				} else {
+					res = await client.connections.getConnections();
+				}
+				return Array.isArray(res) ? res : res.items || [];
+			} catch (err) {
+				if (isNotFoundError(err)) return [];
+				throw err;
 			}
-			return Array.isArray(res) ? res : res.items || [];
 		},
 		refetchInterval: intervalMs === 0 ? false : intervalMs,
 	});
@@ -249,13 +309,18 @@ export function useRabbitChannels(vhost?: string) {
 		queryKey: ["rabbit", "channels", vhost],
 		queryFn: async () => {
 			const client = getRabbitMQClient();
-			let res: Channel[] | { items: Channel[] };
-			if (vhost && vhost !== "all") {
-				res = await client.channels.getChannelsByVhost(vhost);
-			} else {
-				res = await client.channels.getChannels();
+			try {
+				let res: Channel[] | { items: Channel[] };
+				if (vhost && vhost !== "all") {
+					res = await client.channels.getChannelsByVhost(vhost);
+				} else {
+					res = await client.channels.getChannels();
+				}
+				return Array.isArray(res) ? res : res.items || [];
+			} catch (err) {
+				if (isNotFoundError(err)) return [];
+				throw err;
 			}
-			return Array.isArray(res) ? res : res.items || [];
 		},
 		refetchInterval: intervalMs === 0 ? false : intervalMs,
 	});
@@ -313,11 +378,16 @@ export function useRabbitConsumers(vhost?: string) {
 		queryKey: ["rabbit", "consumers", vhost],
 		queryFn: async () => {
 			const client = getRabbitMQClient();
-			const list =
-				vhost && vhost !== "all"
-					? await client.consumers.getConsumersByVhost(vhost)
-					: await client.consumers.getConsumers();
-			return Array.isArray(list) ? list : [];
+			try {
+				const list =
+					vhost && vhost !== "all"
+						? await client.consumers.getConsumersByVhost(vhost)
+						: await client.consumers.getConsumers();
+				return Array.isArray(list) ? list : [];
+			} catch (err) {
+				if (isNotFoundError(err)) return [];
+				throw err;
+			}
 		},
 		refetchInterval: intervalMs === 0 ? false : intervalMs,
 	});

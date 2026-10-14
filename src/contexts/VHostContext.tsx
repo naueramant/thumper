@@ -1,4 +1,4 @@
-import { getRabbitMQClient } from "@/hooks/useAuth/index.ts";
+import { getRabbitMQClient, useAuth } from "@/hooks/useAuth/index.ts";
 import type { Exchange } from "@/services/rabbitmq/types/exchange.ts";
 import type { Queue } from "@/services/rabbitmq/types/queue.ts";
 import type { VirtualHost } from "@/services/rabbitmq/types/vhost.ts";
@@ -9,6 +9,7 @@ import {
 	startTransition,
 	useCallback,
 	useContext,
+	useEffect,
 	useMemo,
 	useState,
 } from "react";
@@ -31,6 +32,19 @@ interface VHostContextValue {
 
 const VHostContext = createContext<VHostContextValue | null>(null);
 
+function getVHostStorageKey(clusterUrl?: string): string {
+	return clusterUrl ? `rabbitdash-vhost:${clusterUrl}` : "rabbitdash-vhost";
+}
+
+function getStoredVHost(clusterUrl?: string): string {
+	if (typeof window === "undefined") return "all";
+	return (
+		localStorage.getItem(getVHostStorageKey(clusterUrl)) ||
+		localStorage.getItem("rabbitdash-vhost") ||
+		"all"
+	);
+}
+
 // Module-level so React Query can memoize the select result. Reducing the full
 // queue/exchange payloads down to per-vhost counts here (instead of in a useMemo
 // over the raw arrays) means this provider's context value only changes when a
@@ -43,13 +57,21 @@ function countByVhost(items: { vhost: string }[]): Record<string, number> {
 }
 
 export function VHostProvider({ children }: { children: ReactNode }) {
+	const { user } = useAuth();
+	const clusterUrl = user?.clusterUrl || "default";
+
 	const [selectedVHost, setSelectedVHostState] = useState<string>(() => {
-		if (typeof window === "undefined") return "/";
-		return localStorage.getItem("rabbitdash-vhost") || "/";
+		return getStoredVHost(user?.clusterUrl);
 	});
 
+	// When cluster URL changes, update selectedVHost to the stored vhost for that cluster
+	useEffect(() => {
+		const stored = getStoredVHost(user?.clusterUrl);
+		setSelectedVHostState(stored);
+	}, [user?.clusterUrl]);
+
 	const { data: vhostsData = [] } = useQuery<VirtualHost[]>({
-		queryKey: ["rabbit", "vhosts"],
+		queryKey: ["rabbit", "vhosts", clusterUrl],
 		queryFn: async () => {
 			const client = getRabbitMQClient();
 			const list = await client.vhosts.getVhosts();
@@ -66,7 +88,7 @@ export function VHostProvider({ children }: { children: ReactNode }) {
 		Error,
 		Record<string, number>
 	>({
-		queryKey: ["rabbit", "queues", undefined],
+		queryKey: ["rabbit", "queues", undefined, clusterUrl],
 		queryFn: async () => {
 			const client = getRabbitMQClient();
 			const res = await client.queues.getQueues();
@@ -81,7 +103,7 @@ export function VHostProvider({ children }: { children: ReactNode }) {
 		Error,
 		Record<string, number>
 	>({
-		queryKey: ["rabbit", "exchanges", undefined],
+		queryKey: ["rabbit", "exchanges", undefined, clusterUrl],
 		queryFn: async () => {
 			const client = getRabbitMQClient();
 			const res = await client.exchanges.getExchanges();
@@ -105,19 +127,36 @@ export function VHostProvider({ children }: { children: ReactNode }) {
 					queues: queueCounts[v.name] ?? 0,
 					exchanges: exchangeCounts[v.name] ?? 0,
 				}))
-			: [{ name: "/", messages: 0, tracing: false, queues: 0, exchanges: 0 }];
+			: [];
 	}, [vhostsData, queueCounts, exchangeCounts]);
 
 	// Stable setter — persists to localStorage and wraps the state update in
 	// startTransition so React treats the re-render cascade as non-urgent.
 	// This prevents the UI from freezing when many heavy page components
 	// (QueuesPage, ExchangesPage, etc.) all re-render simultaneously on vhost change.
-	const setSelectedVHost = useCallback((vhost: string) => {
-		localStorage.setItem("rabbitdash-vhost", vhost);
-		startTransition(() => {
-			setSelectedVHostState(vhost);
-		});
-	}, []);
+	const setSelectedVHost = useCallback(
+		(vhost: string) => {
+			const storageKey = getVHostStorageKey(user?.clusterUrl);
+			localStorage.setItem(storageKey, vhost);
+			localStorage.setItem("rabbitdash-vhost", vhost);
+			startTransition(() => {
+				setSelectedVHostState(vhost);
+			});
+		},
+		[user?.clusterUrl],
+	);
+
+	// Auto-heal: If the currently selected vhost is not available on this host,
+	// automatically fallback to "all" (cluster-wide scope across all vhosts the user can see).
+	useEffect(() => {
+		if (vhostsData.length === 0) return;
+		if (selectedVHost === "all") return;
+
+		const exists = vhostsData.some((v) => v.name === selectedVHost);
+		if (!exists) {
+			setSelectedVHost("all");
+		}
+	}, [vhostsData, selectedVHost, setSelectedVHost]);
 
 	// Stable context value object — only a new reference when the actual values change.
 	// Without useMemo every provider render pushed a new object, re-rendering all consumers.

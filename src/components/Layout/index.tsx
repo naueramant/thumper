@@ -22,7 +22,7 @@ export function Layout() {
       >
         <Header />
         <ConnectionStatusBanner />
-        <main className="flex-1 p-5 md:p-6 w-full">
+        <main className="flex-1 p-5 md:p-6 w-full flex flex-col">
           <Outlet />
         </main>
       </div>

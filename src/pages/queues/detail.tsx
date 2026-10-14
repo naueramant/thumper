@@ -8,13 +8,8 @@ import {
 import { buildTopologyGraph, TopologyFlow } from "@/components/TopologyFlow";
 import { Badge } from "@/components/ui/badge/index.tsx";
 import { Button } from "@/components/ui/button/index.tsx";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card/index.tsx";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card/index.tsx";
+import { Dropdown } from "@/components/ui/dropdown/index.tsx";
 import {
 	Table,
 	TableBody,
@@ -25,6 +20,17 @@ import {
 } from "@/components/ui/table/index.tsx";
 import { toast } from "@/components/ui/toast/index.tsx";
 import { Tooltip } from "@/components/ui/tooltip/index.tsx";
+import {
+	QueuedMessagesChart,
+	MessageRatesChart,
+} from "@/components/HistoricalCharts/index.ts";
+import {
+	QUEUE_CHART_RANGES,
+	type ChartRangeOption,
+} from "@/utilities/chart/telemetry.ts";
+import { cn } from "@/utilities/cn/index.ts";
+import { useAuth } from "@/hooks/useAuth/index.ts";
+import { useResourcePermissions } from "@/hooks/usePermissions/index.ts";
 import {
 	useRabbitExchanges,
 	useRabbitMutations,
@@ -43,7 +49,6 @@ import {
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import {
 	AlertTriangle,
-	BookmarkPlus,
 	Check,
 	CheckCircle2,
 	ChevronRight,
@@ -54,19 +59,19 @@ import {
 	FileCode,
 	Layers,
 	Link as LinkIcon,
+	Lock,
 	Network,
 	RefreshCw,
 	RotateCcw,
 	Send,
-	SendHorizontal,
+	Share2,
+	ShieldAlert,
 	Shovel,
 	Trash2,
 	Unlink,
 	X,
 } from "lucide-react";
 import * as React from "react";
-import { TestCollectionsDrawer } from "@/components/TestCollections/index.ts";
-import { saveTemplateToCollection } from "@/services/testCollections/storage.ts";
 import { DlqReplayDialog } from "./components/DlqReplayDialog.tsx";
 import { MoveMessagesDialog } from "./components/MoveMessagesDialog.tsx";
 import { StreamDetailView } from "./components/StreamDetailView.tsx";
@@ -106,11 +111,37 @@ export function QueueDetailPage() {
 	const vhost = params.vhost ? decodeURIComponent(params.vhost) : "/";
 	const queueName = params.name ? decodeURIComponent(params.name) : "";
 
+	const [chartRange, setChartRange] = React.useState<ChartRangeOption>(
+		QUEUE_CHART_RANGES[2], // 1 hour default (RabbitMQ basic retention max is 1h)
+	);
+
+	const queryOptions = React.useMemo(
+		() => ({
+			lengths_age: chartRange.age,
+			lengths_incr: chartRange.incr,
+			msg_rates_age: chartRange.age,
+			msg_rates_incr: chartRange.incr,
+		}),
+		[chartRange],
+	);
+
+	const { user } = useAuth();
+	const permissions = useResourcePermissions({ vhost, queueName });
+	const {
+		hasVHostAccess,
+		canRead,
+		canWrite,
+		canConfigure,
+		isAdminWithoutVHostPerms,
+		isLoading: isPermissionsLoading,
+	} = permissions;
+
 	const {
 		data: queue,
 		isLoading: isQueueLoading,
+		error: queueError,
 		refetch: refetchQueue,
-	} = useRabbitQueueDetail(vhost, queueName);
+	} = useRabbitQueueDetail(vhost, queueName, queryOptions);
 
 	const { data: bindings = [], refetch: refetchBindings } =
 		useRabbitQueueBindings(vhost, queueName);
@@ -156,20 +187,8 @@ export function QueueDetailPage() {
 		});
 	}, [allExchanges, queue, bindings, vhost, queueName, navigate]);
 
-	// Message Explorer State
-	const [messages, setMessages] = React.useState<QueueMessage[]>([]);
-	const [isFetchingMessages, setIsFetchingMessages] = React.useState(false);
-	const [peekCount, setPeekCount] = React.useState<number>(10);
-	const [peekAckMode, setPeekAckMode] =
-		React.useState<AckMode>("ack_requeue_true");
-	const [selectedMessage, setSelectedMessage] =
-		React.useState<QueueMessage | null>(null);
-	const [copiedMessageIndex, setCopiedMessageIndex] = React.useState<
-		number | null
-	>(null);
 
 	// Publish Form State
-	const [pubRoutingKey, setPubRoutingKey] = React.useState("");
 	const [pubPayload, setPubPayload] = React.useState(
 		JSON.stringify(
 			{ event: "order_updated", id: 42, status: "processed" },
@@ -185,6 +204,18 @@ export function QueueDetailPage() {
 	const [bindRoutingKey, setBindRoutingKey] = React.useState("");
 	const [isBinding, setIsBinding] = React.useState(false);
 
+	// Available exchanges for binding autocompletion
+	const exchangeOptions = React.useMemo(() => {
+		return allExchanges
+			.filter((ex) => ex.name && ex.name.trim() !== "")
+			.map((ex) => ({
+				label: ex.name,
+				value: ex.name,
+				subLabel: ex.type,
+				icon: <Share2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />,
+			}));
+	}, [allExchanges]);
+
 	// Confirmation Modals
 	const [showPurgeConfirm, setShowPurgeConfirm] = React.useState(false);
 	const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
@@ -193,13 +224,36 @@ export function QueueDetailPage() {
 	const [showDlqReplayDialog, setShowDlqReplayDialog] = React.useState(false);
 	const [singleMessageToReplay, setSingleMessageToReplay] =
 		React.useState<QueueMessage | null>(null);
-	const [isCollectionsOpen, setIsCollectionsOpen] = React.useState(false);
 	const { data: isShovelEnabled = false } = useRabbitShovelPlugin();
+
+	// Message Explorer State
+	const [messages, setMessages] = React.useState<QueueMessage[]>([]);
+	const [isFetchingMessages, setIsFetchingMessages] = React.useState(false);
+	const [messageAccessError, setMessageAccessError] = React.useState<string | null>(null);
+	const [peekCount, setPeekCount] = React.useState<number>(10);
+	const [peekAckMode, setPeekAckMode] =
+		React.useState<AckMode>("ack_requeue_true");
+	const [selectedMessage, setSelectedMessage] =
+		React.useState<QueueMessage | null>(null);
+	const [copiedMessageIndex, setCopiedMessageIndex] = React.useState<
+		number | null
+	>(null);
 
 	// Auto-fetch messages on mount or when queue updates
 	const fetchMessages = React.useCallback(
-		async (count = peekCount, ackMode = peekAckMode) => {
+		async (count = peekCount, ackMode = peekAckMode, isManual = false) => {
 			if (!vhost || !queueName) return;
+
+			// If permissions are loaded and user does not have read permissions, skip fetch
+			if (!isPermissionsLoading && !canRead) {
+				const errMsg = "Access denied: You do not have permission to read messages from this queue.";
+				setMessageAccessError(errMsg);
+				if (isManual) {
+					toast.error("Access denied", errMsg);
+				}
+				return;
+			}
+
 			setIsFetchingMessages(true);
 			try {
 				const msgs = await getQueueMessages.mutateAsync({
@@ -214,23 +268,37 @@ export function QueueDetailPage() {
 					},
 				});
 				setMessages(msgs || []);
+				setMessageAccessError(null);
 			} catch (err: any) {
-				console.error("Failed to peek messages:", err);
+				const isAuth = err?.status === 401 || err?.status === 403;
+				if (isAuth) {
+					const reason = err?.reason || "Access refused";
+					const errMsg = `Access denied: You do not have permission to read messages from this queue (${reason}).`;
+					setMessageAccessError(errMsg);
+					if (isManual) {
+						toast.error("Access denied", errMsg);
+					}
+				} else {
+					console.error("Failed to peek messages:", err);
+				}
 			} finally {
 				setIsFetchingMessages(false);
 			}
 		},
-		[vhost, queueName, peekCount, peekAckMode, getQueueMessages],
+		[vhost, queueName, peekCount, peekAckMode, getQueueMessages, canRead, isPermissionsLoading],
 	);
 
 	React.useEffect(() => {
+		if (!isPermissionsLoading && !canRead) {
+			setMessageAccessError("Access denied: You do not have permission to read messages from this queue.");
+			return;
+		}
 		fetchMessages();
-	}, [vhost, queueName]);
+	}, [vhost, queueName, canRead, isPermissionsLoading]);
 
 	// Handle Duplicating a Message
 	const handleDuplicateMessage = (msg: QueueMessage) => {
 		setPubPayload(msg.payload);
-		setPubRoutingKey(msg.routing_key || queueName);
 		setActiveTab("publish");
 	};
 
@@ -244,7 +312,7 @@ export function QueueDetailPage() {
 				vhost,
 				exchange: "", // Default exchange routes directly to queue named in routing key
 				data: {
-					routing_key: pubRoutingKey.trim() || queueName,
+					routing_key: queueName,
 					payload: pubPayload,
 					payload_encoding: "string",
 					properties: {
@@ -349,6 +417,52 @@ export function QueueDetailPage() {
 		);
 	}
 
+	if (!queue) {
+		const isAuthError =
+			(queueError as any)?.status === 401 ||
+			(queueError as any)?.status === 403;
+		return (
+			<div className="space-y-6">
+				<Breadcrumbs className="shrink-0">
+					<Link
+						to="/queues"
+						className="hover:text-foreground transition-colors"
+					>
+						Queues &amp; Streams
+					</Link>
+					<ChevronRight className="h-3 w-3 text-muted-foreground/50" />
+					<span className="text-foreground font-medium truncate max-w-xs">
+						{queueName}
+					</span>
+				</Breadcrumbs>
+
+				<Card className="border border-border/80">
+					<CardContent className="py-16 flex flex-col items-center justify-center text-center px-4">
+						<div className="p-3 rounded-full bg-amber-500/10 text-amber-500 mb-4 border border-amber-500/20">
+							<ShieldAlert className="h-8 w-8" />
+						</div>
+						<h2 className="text-lg font-semibold text-foreground">
+							{isAuthError ? "Access Denied" : "Queue Not Found"}
+						</h2>
+						<p className="text-sm text-muted-foreground mt-1 max-w-md">
+							{isAuthError
+								? `You do not have permission to view queue "${queueName}" in virtual host "${vhost}".`
+								: `The queue "${queueName}" could not be loaded.`}
+						</p>
+						<Button
+							variant="outline"
+							size="sm"
+							className="mt-6"
+							onClick={() => navigate({ to: "/queues" })}
+						>
+							Back to Queues
+						</Button>
+					</CardContent>
+				</Card>
+			</div>
+		);
+	}
+
 	const totalMessages = queue?.messages || 0;
 	const readyMessages = queue?.messages_ready || 0;
 	const unackedMessages = queue?.messages_unacknowledged || 0;
@@ -395,8 +509,6 @@ export function QueueDetailPage() {
 					bindings={bindings}
 					topologyNodes={topologyNodes}
 					topologyEdges={topologyEdges}
-					pubRoutingKey={pubRoutingKey}
-					setPubRoutingKey={setPubRoutingKey}
 					pubPayload={pubPayload}
 					setPubPayload={setPubPayload}
 					isPublishing={isPublishing}
@@ -409,10 +521,23 @@ export function QueueDetailPage() {
 					isBinding={isBinding}
 					handleCreateBinding={handleCreateBinding}
 					handleDeleteBinding={handleDeleteBinding}
+					allExchanges={allExchanges}
+					canRead={canRead}
+					canWrite={canWrite}
+					canConfigure={canConfigure}
+					hasVHostAccess={hasVHostAccess}
+					isAdminWithoutVHostPerms={isAdminWithoutVHostPerms}
+					isPermissionsLoading={isPermissionsLoading}
+					messageAccessError={messageAccessError}
 				/>
 			) : (
-				<div className="space-y-6 pb-16">
-					<Breadcrumbs>
+				<div
+					className={cn(
+						"space-y-6",
+						activeTab === "topology" ? "flex-1 flex flex-col min-h-0" : "pb-16",
+					)}
+				>
+					<Breadcrumbs className="shrink-0">
 						<Link
 							to="/queues"
 							className="hover:text-foreground transition-colors"
@@ -426,7 +551,7 @@ export function QueueDetailPage() {
 					</Breadcrumbs>
 
 					{/* Header */}
-					<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-border/50 pb-4">
+					<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-border/50 pb-4 shrink-0">
 						<div>
 							<div className="flex items-center gap-3">
 								<div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary border border-primary/20">
@@ -518,7 +643,7 @@ export function QueueDetailPage() {
 								Refresh
 							</Button>
 
-							{isShovelEnabled && (
+							{isShovelEnabled && canRead && (
 								<Button
 									variant="outline"
 									size="sm"
@@ -531,7 +656,7 @@ export function QueueDetailPage() {
 								</Button>
 							)}
 
-							{isDlqSink(queue, messages) && (
+							{isDlqSink(queue, messages) && canRead && (
 								<Button
 									variant="outline"
 									size="sm"
@@ -547,31 +672,81 @@ export function QueueDetailPage() {
 								</Button>
 							)}
 
-							<Button
-								variant="outline"
-								size="sm"
-								onClick={() => setShowPurgeConfirm(true)}
-								className="h-8 text-xs text-amber-500 border-amber-500/30 hover:bg-amber-500/10"
-							>
-								<Eraser className="h-3.5 w-3.5 mr-1.5" />
-								Purge
-							</Button>
+							{canRead ? (
+								<Button
+									variant="outline"
+									size="sm"
+									onClick={() => setShowPurgeConfirm(true)}
+									className="h-8 text-xs text-amber-500 border-amber-500/30 hover:bg-amber-500/10"
+								>
+									<Eraser className="h-3.5 w-3.5 mr-1.5" />
+									Purge
+								</Button>
+							) : (
+								<Tooltip content="Purge disabled: Read permission required on this queue">
+									<Button
+										variant="outline"
+										size="sm"
+										disabled
+										className="h-8 text-xs text-muted-foreground border-border/40 opacity-50 cursor-not-allowed"
+									>
+										<Eraser className="h-3.5 w-3.5 mr-1.5" />
+										Purge
+									</Button>
+								</Tooltip>
+							)}
 
-							<Button
-								variant="outline"
-								size="sm"
-								onClick={() => setShowDeleteConfirm(true)}
-								className="h-8 text-xs text-destructive border-destructive/30 hover:bg-destructive/10"
-							>
-								<Trash2 className="h-3.5 w-3.5 mr-1" />
-								Delete
-							</Button>
+							{canConfigure ? (
+								<Button
+									variant="outline"
+									size="sm"
+									onClick={() => setShowDeleteConfirm(true)}
+									className="h-8 text-xs text-destructive border-destructive/30 hover:bg-destructive/10"
+								>
+									<Trash2 className="h-3.5 w-3.5 mr-1" />
+									Delete
+								</Button>
+							) : (
+								<Tooltip content="Delete disabled: Configure permission required on this virtual host">
+									<Button
+										variant="outline"
+										size="sm"
+										disabled
+										className="h-8 text-xs text-muted-foreground border-border/40 opacity-50 cursor-not-allowed"
+									>
+										<Trash2 className="h-3.5 w-3.5 mr-1" />
+										Delete
+									</Button>
+								</Tooltip>
+							)}
 						</div>
 					</div>
 
+					{/* Limited VHost Access Banner */}
+					{(!hasVHostAccess || isAdminWithoutVHostPerms) && !isPermissionsLoading && (
+						<div className="p-3.5 rounded-xl border border-amber-500/30 bg-amber-500/10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs text-amber-700 dark:text-amber-400 shrink-0">
+							<div className="flex items-start sm:items-center gap-2.5">
+								<ShieldAlert className="h-4 w-4 shrink-0 text-amber-500 mt-0.5 sm:mt-0" />
+								<div>
+									<span className="font-semibold">Limited Access Notice:</span> You do not have permissions granted on virtual host{" "}
+									<span className="font-mono font-bold text-foreground">{vhost}</span>. Queue operations (reading messages, publishing, purging) are restricted by RabbitMQ.
+								</div>
+							</div>
+							{user?.tags?.includes("administrator") && (
+								<Link
+									to="/admin/$tab"
+									params={{ tab: "vhosts" }}
+									className="inline-flex items-center gap-1 font-medium underline hover:text-amber-800 dark:hover:text-amber-300 shrink-0 text-xs"
+								>
+									Manage Permissions
+								</Link>
+							)}
+						</div>
+					)}
+
 					{/* DLQ Diagnostics Banner */}
 					{isDlqSink(queue, messages) && (
-						<div className="p-3.5 rounded-xl border border-rose-500/30 bg-rose-500/5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 animate-in fade-in duration-200">
+						<div className="p-3.5 rounded-xl border border-rose-500/30 bg-rose-500/5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 animate-in fade-in duration-200 shrink-0">
 							<div className="flex items-start gap-3">
 								<div className="p-2 rounded-lg bg-rose-500/10 text-rose-500 border border-rose-500/20 shrink-0">
 									<RotateCcw className="h-4 w-4" />
@@ -606,7 +781,7 @@ export function QueueDetailPage() {
 					)}
 
 					{/* Top Metric Cards — always visible */}
-					<div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+					<div className="grid grid-cols-2 md:grid-cols-4 gap-3 shrink-0">
 						<Card className="border border-border/80 bg-card/60">
 							<CardContent className="p-4 space-y-1">
 								<span className="text-[11px] font-medium text-muted-foreground">
@@ -704,8 +879,26 @@ export function QueueDetailPage() {
 						</Card>
 					</div>
 
+					{/* Historical Telemetry Charts */}
+					<div className="grid grid-cols-1 lg:grid-cols-2 gap-4 shrink-0">
+						<QueuedMessagesChart
+							source={queue}
+							availableRanges={QUEUE_CHART_RANGES}
+							selectedRange={chartRange}
+							onRangeChange={setChartRange}
+							height={200}
+						/>
+						<MessageRatesChart
+							stats={queue?.message_stats}
+							availableRanges={QUEUE_CHART_RANGES}
+							selectedRange={chartRange}
+							onRangeChange={setChartRange}
+							height={200}
+						/>
+					</div>
+
 					{/* Tab Bar */}
-					<div className="border-b border-border/60">
+					<div className="border-b border-border/60 shrink-0">
 						<div className="flex items-center gap-0.5">
 							{tabs.map((tab) => (
 								<button
@@ -736,7 +929,13 @@ export function QueueDetailPage() {
 					</div>
 
 					{/* Tab Content */}
-					<div className="animate-in fade-in duration-150">
+					<div
+						className={cn(
+							activeTab === "topology"
+								? "flex-1 flex flex-col min-h-0 transition-none"
+								: "animate-in fade-in duration-150",
+						)}
+					>
 						{/* ── Messages Tab ── */}
 						{activeTab === "messages" && (
 							<Card className="border border-border/80">
@@ -760,46 +959,50 @@ export function QueueDetailPage() {
 										<div className="flex flex-wrap items-center gap-2">
 											<div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono">
 												<span>Mode:</span>
-												<select
+												<Dropdown<AckMode>
 													value={peekAckMode}
-													onChange={(e) =>
-														setPeekAckMode(e.target.value as AckMode)
-													}
-													className="h-7 rounded border border-border bg-background px-2 text-[11px] font-mono focus:outline-none focus:border-primary"
-												>
-													<option value="ack_requeue_true">
-														Safe Peek (Requeue)
-													</option>
-													<option value="ack_requeue_false">
-														Automatic Ack (Dequeue)
-													</option>
-													<option value="reject_requeue_false">
-														Reject (Drop/DLQ)
-													</option>
-												</select>
+													onChange={(v) => setPeekAckMode(v)}
+													options={[
+														{
+															label: "Safe Peek (Requeue)",
+															value: "ack_requeue_true",
+														},
+														{
+															label: "Automatic Ack (Dequeue)",
+															value: "ack_requeue_false",
+														},
+														{
+															label: "Reject (Drop/DLQ)",
+															value: "reject_requeue_false",
+														},
+													]}
+													buttonClassName="h-7 px-2 text-[11px] font-mono"
+												/>
 											</div>
 
 											<div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono">
 												<span>Count:</span>
-												<select
+												<Dropdown<number>
 													value={peekCount}
-													onChange={(e) => setPeekCount(Number(e.target.value))}
-													className="h-7 rounded border border-border bg-background px-2 text-[11px] font-mono focus:outline-none focus:border-primary"
-												>
-													<option value={5}>5 msgs</option>
-													<option value={10}>10 msgs</option>
-													<option value={25}>25 msgs</option>
-													<option value={50}>50 msgs</option>
-													<option value={100}>100 msgs</option>
-												</select>
+													onChange={(v) => setPeekCount(v)}
+													options={[
+														{ label: "5 msgs", value: 5 },
+														{ label: "10 msgs", value: 10 },
+														{ label: "25 msgs", value: 25 },
+														{ label: "50 msgs", value: 50 },
+														{ label: "100 msgs", value: 100 },
+													]}
+													buttonClassName="h-7 px-2 text-[11px] font-mono"
+												/>
 											</div>
 
 											<Button
 												variant="outline"
 												size="sm"
-												onClick={() => fetchMessages(peekCount, peekAckMode)}
-												disabled={isFetchingMessages}
+												onClick={() => fetchMessages(peekCount, peekAckMode, true)}
+												disabled={isFetchingMessages || (!canRead && !isPermissionsLoading)}
 												className="h-7 text-xs font-mono"
+												title={(!canRead && !isPermissionsLoading) ? "Read permission required to fetch messages" : undefined}
 											>
 												<RefreshCw
 													className={`h-3 w-3 mr-1 ${isFetchingMessages ? "animate-spin" : ""}`}
@@ -811,7 +1014,24 @@ export function QueueDetailPage() {
 								</CardHeader>
 
 								<CardContent className="p-0">
-									{messages.length === 0 ? (
+									{messageAccessError || (!canRead && !isPermissionsLoading) ? (
+										<div className="py-12 flex flex-col items-center justify-center text-center px-4">
+											<div className="p-3 rounded-full bg-amber-500/10 text-amber-500 mb-3 border border-amber-500/20">
+												<Lock className="h-6 w-6" />
+											</div>
+											<h3 className="text-sm font-semibold text-foreground">
+												Message Inspection Restricted
+											</h3>
+											<p className="text-xs text-muted-foreground mt-1 max-w-md">
+												You do not have read permissions to inspect or get messages from queue{" "}
+												<span className="font-mono text-foreground font-medium">{queueName}</span> in virtual host{" "}
+												<span className="font-mono text-foreground font-medium">{vhost}</span>.
+											</p>
+											<div className="mt-3 text-[11px] font-mono text-amber-700 dark:text-amber-400 bg-amber-500/10 px-3 py-1.5 rounded border border-amber-500/20">
+												{messageAccessError || "AMQP read permission required for this queue"}
+											</div>
+										</div>
+									) : messages.length === 0 ? (
 										<div className="py-12 text-center text-xs text-muted-foreground font-mono">
 											{isFetchingMessages ? (
 												<div className="flex items-center justify-center gap-2">
@@ -975,8 +1195,8 @@ export function QueueDetailPage() {
 
 						{/* ── Topology Tab ── */}
 						{activeTab === "topology" && (
-							<Card className="border-border bg-card/60 backdrop-blur-sm overflow-hidden">
-								<CardHeader className="p-4 pb-2 border-b border-border/60">
+							<Card className="flex-1 flex flex-col border-border bg-card/60 backdrop-blur-sm overflow-hidden min-h-[420px] transition-none">
+								<CardHeader className="p-4 pb-2 border-b border-border/60 shrink-0">
 									<div className="flex items-center justify-between">
 										<div className="flex items-center gap-2">
 											<Network className="h-4 w-4 text-primary" />
@@ -994,13 +1214,13 @@ export function QueueDetailPage() {
 										this queue and connected consumer listeners.
 									</CardDescription>
 								</CardHeader>
-								<CardContent className="p-0">
+								<CardContent className="p-0 flex-1 min-h-0 flex flex-col transition-none">
 									<TopologyFlow
 										nodes={topologyNodes}
 										edges={topologyEdges}
-										height="400px"
+										height="100%"
 										showMinimap={false}
-										className="rounded-t-none border-0"
+										className="rounded-t-none border-0 flex-1 w-full transition-none"
 									/>
 								</CardContent>
 							</Card>
@@ -1033,72 +1253,28 @@ export function QueueDetailPage() {
 													<CheckCircle2 className="h-3 w-3 mr-1" /> Queued!
 												</Badge>
 											)}
-
-											<Button
-												type="button"
-												variant="outline"
-												size="sm"
-												onClick={() => setIsCollectionsOpen(true)}
-												className="h-7 px-2 text-xs font-mono text-muted-foreground hover:text-foreground cursor-pointer"
-												title="Open Publisher Studio to load saved templates"
-											>
-												<SendHorizontal className="h-3 w-3 mr-1 text-primary" />
-												Studio
-											</Button>
-
-											<Button
-												type="button"
-												variant="outline"
-												size="sm"
-												onClick={() => {
-													saveTemplateToCollection("saved-templates", {
-														id: `tpl-${Date.now()}`,
-														name: `${queueName} message`,
-														targetType: "queue",
-														targetName: queueName,
-														vhost,
-														routingKey: pubRoutingKey || queueName,
-														payload: pubPayload,
-														createdAt: Date.now(),
-														updatedAt: Date.now(),
-													});
-													toast.success("Saved to Collections");
-												}}
-												className="h-7 px-2 text-xs font-mono text-muted-foreground hover:text-foreground cursor-pointer"
-												title="Save current payload and routing key to collections"
-											>
-												<BookmarkPlus className="h-3 w-3 mr-1 text-emerald-500" />
-												Save
-											</Button>
 										</div>
 									</div>
 								</CardHeader>
 								<CardContent className="p-4 space-y-3">
-									<form onSubmit={handlePublish} className="space-y-3">
-										<div className="space-y-1">
-											<label className="text-xs font-medium text-muted-foreground">
-												Routing Key
-											</label>
-											<input
-												type="text"
-												value={pubRoutingKey}
-												onChange={(e) => setPubRoutingKey(e.target.value)}
-												placeholder={queueName}
-												className="h-8 w-full rounded border border-border bg-muted/20 px-2.5 text-xs font-mono focus:border-primary focus:outline-none"
-											/>
+									{!canWrite && !isPermissionsLoading && (
+										<div className="p-3 rounded-lg border border-amber-500/30 bg-amber-500/10 flex items-center gap-2.5 text-xs text-amber-700 dark:text-amber-400">
+											<ShieldAlert className="h-4 w-4 shrink-0 text-amber-500" />
+											<span>Publishing restricted: You do not have write permission on this queue/virtual host.</span>
 										</div>
-
+									)}
+									<form onSubmit={handlePublish} className="space-y-3">
 										<PayloadEditor
 											value={pubPayload}
 											onChange={setPubPayload}
-											label="Payload (JSON or Raw Text)"
+											label="Payload"
 											rows={7}
 											placeholder='{"message": "hello"}'
 										/>
 
 										<Button
 											type="submit"
-											disabled={isPublishing || !pubPayload.trim()}
+											disabled={isPublishing || !pubPayload.trim() || (!canWrite && !isPermissionsLoading)}
 											className="w-full h-8 text-xs font-semibold"
 										>
 											{isPublishing ? (
@@ -1135,8 +1311,15 @@ export function QueueDetailPage() {
 									</CardDescription>
 								</CardHeader>
 								<CardContent className="p-4 space-y-4">
+									{!canConfigure && !isPermissionsLoading && (
+										<div className="p-3 rounded-lg border border-amber-500/30 bg-amber-500/10 flex items-center gap-2.5 text-xs text-amber-700 dark:text-amber-400">
+											<ShieldAlert className="h-4 w-4 shrink-0 text-amber-500" />
+											<span>Binding management restricted: Configure permission required on this virtual host.</span>
+										</div>
+									)}
+
 									{/* Bindings List */}
-									<div className="space-y-2 max-h-72 overflow-y-auto">
+									<div className="space-y-2 max-h-72 overflow-y-auto scrollbar-thin">
 										{bindings.length === 0 ? (
 											<div className="text-xs text-muted-foreground font-mono py-4 text-center">
 												No bindings configured for this queue.
@@ -1161,7 +1344,7 @@ export function QueueDetailPage() {
 														</Badge>
 													</div>
 
-													{b.source !== "" && (
+													{b.source !== "" && canConfigure && (
 														<Button
 															variant="ghost"
 															size="sm"
@@ -1180,40 +1363,57 @@ export function QueueDetailPage() {
 									</div>
 
 									{/* Add Binding Form */}
-									<form
-										onSubmit={handleCreateBinding}
-										className="pt-2 border-t border-border/50 space-y-2"
-									>
-										<span className="text-xs font-semibold text-foreground block">
-											Bind from Exchange
-										</span>
-										<div className="grid grid-cols-2 gap-2">
-											<input
-												type="text"
-												required
-												value={bindExchange}
-												onChange={(e) => setBindExchange(e.target.value)}
-												placeholder="Source exchange (e.g. amq.direct)"
-												className="h-8 rounded border border-border bg-muted/20 px-2 text-xs font-mono focus:border-primary focus:outline-none"
-											/>
-											<input
-												type="text"
-												value={bindRoutingKey}
-												onChange={(e) => setBindRoutingKey(e.target.value)}
-												placeholder="Routing key (optional)"
-												className="h-8 rounded border border-border bg-muted/20 px-2 text-xs font-mono focus:border-primary focus:outline-none"
-											/>
-										</div>
-										<Button
-											type="submit"
-											variant="outline"
-											size="sm"
-											disabled={isBinding || !bindExchange.trim()}
-											className="w-full h-8 text-xs font-mono"
+									{canConfigure && (
+										<form
+											onSubmit={handleCreateBinding}
+											className="pt-2 border-t border-border/50 space-y-2"
 										>
-											{isBinding ? "Binding..." : "+ Bind Exchange"}
-										</Button>
-									</form>
+											<span className="text-xs font-semibold text-foreground block">
+												Bind from Exchange
+											</span>
+											<div className="grid grid-cols-2 gap-2">
+												<Dropdown<string>
+													value={bindExchange}
+													onChange={(val) => setBindExchange(val)}
+													options={exchangeOptions}
+													searchable
+													clearable
+													allowCustom
+													searchPlaceholder="Filter exchanges..."
+													placeholder="Source exchange (e.g. amq.direct)"
+													align="left"
+													className="w-full"
+													buttonClassName="h-8 w-full justify-between px-2 text-xs font-mono bg-muted/20 border-border"
+													contentClassName="w-full"
+												/>
+												<input
+													type="text"
+													value={bindRoutingKey}
+													onChange={(e) => setBindRoutingKey(e.target.value)}
+													placeholder="Routing key (optional)"
+													className="h-8 rounded border border-border bg-muted/20 px-2 text-xs font-mono focus:border-primary focus:outline-none"
+												/>
+											</div>
+											<Button
+												type="submit"
+												variant="outline"
+												size="sm"
+												disabled={isBinding || !bindExchange.trim()}
+												className="h-8 text-xs font-mono cursor-pointer"
+											>
+												{isBinding ? (
+													<>
+														<RefreshCw className="h-3 w-3 mr-1 animate-spin" />{" "}
+														Binding...
+													</>
+												) : (
+													<>
+														<LinkIcon className="h-3 w-3 mr-1" /> Create Binding
+													</>
+												)}
+											</Button>
+										</form>
+									)}
 								</CardContent>
 							</Card>
 						)}
@@ -1242,7 +1442,7 @@ export function QueueDetailPage() {
 							</Button>
 						</div>
 
-						<div className="p-4 space-y-4 overflow-y-auto flex-1">
+						<div className="p-4 space-y-4 overflow-y-auto flex-1 scrollbar-thin">
 							{/* Properties Grid */}
 							<div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono bg-muted/30 p-3 rounded-lg border border-border/50">
 								<div>
@@ -1382,7 +1582,7 @@ export function QueueDetailPage() {
 						</CardHeader>
 						<CardContent className="pt-4 flex justify-end gap-2">
 							<Button
-								variant="outline"
+								variant="secondary"
 								size="sm"
 								onClick={() => setShowPurgeConfirm(false)}
 								className="h-8 text-xs"
@@ -1420,7 +1620,7 @@ export function QueueDetailPage() {
 						</CardHeader>
 						<CardContent className="pt-4 flex justify-end gap-2">
 							<Button
-								variant="outline"
+								variant="secondary"
 								size="sm"
 								onClick={() => setShowDeleteConfirm(false)}
 								className="h-8 text-xs"
@@ -1471,17 +1671,6 @@ export function QueueDetailPage() {
 				onSuccess={() => {
 					refetchQueue();
 					fetchMessages();
-				}}
-			/>
-
-			{/* Test Collections Drawer */}
-			<TestCollectionsDrawer
-				isOpen={isCollectionsOpen}
-				onClose={() => setIsCollectionsOpen(false)}
-				onLoadTemplate={(tpl) => {
-					setPubPayload(tpl.payload);
-					if (tpl.routingKey) setPubRoutingKey(tpl.routingKey);
-					toast.success(`Loaded template "${tpl.name}"`);
 				}}
 			/>
 		</>

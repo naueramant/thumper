@@ -70,3 +70,14 @@ export interface WhoamiResponse {
 export interface Extension {
   javascript: string | string[];
 }
+
+export interface OverviewQueryOptions extends Record<string, unknown> {
+  columns?: string[];
+  disable_stats?: boolean;
+  msg_rates_age?: number;
+  msg_rates_incr?: number;
+  lengths_age?: number;
+  lengths_incr?: number;
+  data_rates_age?: number;
+  data_rates_incr?: number;
+}

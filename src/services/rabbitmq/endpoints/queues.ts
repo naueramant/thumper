@@ -7,6 +7,7 @@ import type {
   PurgeQueueResponse,
   Queue,
   QueueMessage,
+  QueueQueryOptions,
 } from '../types/queue.ts';
 import { encodeName, encodeVhost } from '../utils.ts';
 
@@ -51,11 +52,18 @@ export class QueuesApi {
   }
 
   /**
-   * Retrieves an individual queue by virtual host and name.
+   * Retrieves an individual queue by virtual host and name with optional metrics query params.
    */
-  async getQueue(vhost: string, name: string): Promise<Queue> {
+  async getQueue(
+    vhost: string,
+    name: string,
+    options?: QueueQueryOptions
+  ): Promise<Queue> {
     return this.client.request<Queue>(
-      `/api/queues/${encodeVhost(vhost)}/${encodeName(name)}`
+      `/api/queues/${encodeVhost(vhost)}/${encodeName(name)}`,
+      {
+        query: options as Record<string, unknown>,
+      }
     );
   }
 

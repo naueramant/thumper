@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="public/banner.svg" alt="Thumber banner" width="100%">
+  <img src="public/banner.svg" alt="Thumper banner" width="100%">
 </p>
 
 <p align="center">
@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-  <a href="#-why-thumber">Why Thumber</a> •
+  <a href="#-why-thumper">Why Thumper</a> •
   <a href="#-key-features">Features</a> •
   <a href="#-quick-start">Quick Start</a> •
   <a href="#%EF%B8%8F-tech-stack">Tech Stack</a> •
@@ -23,15 +23,15 @@
 
 ---
 
-## 💡 Why Thumber?
+## 💡 Why Thumper?
 
 RabbitMQ's built-in management UI has barely changed in over a decade. It works, but nested collapsible tables, static hour-long charts, and a UI that fights you at every click aren't exactly a joy to operate during an incident.
 
-**Thumber** is a modern replacement for it, built on the same RabbitMQ HTTP API you already have. It covers the same ground — queues, exchanges, connections, users, policies — and adds the things the classic UI never got around to:
+**Thumper** is a modern replacement for it, built on the same RabbitMQ HTTP API you already have. It covers the same ground — queues, exchanges, connections, users, policies — and adds the things the classic UI never got around to:
 
 - ⚡ **Built for speed**: A modern React SPA instead of server-rendered pages, so navigating, filtering, and refreshing feels instant.
 - 🧭 **Designed for operators**: Clear visual hierarchy, health scoring, and topology graphs replace walls of numbers — so you can spot the problem in seconds, not minutes.
-- 🔌 **No backend to run**: Thumber only needs the RabbitMQ management API. Point it at your broker and go — no extra database, no extra service.
+- 🔌 **No backend to run**: Thumper only needs the RabbitMQ management API. Point it at your broker and go — no extra database, no extra service.
 
 ---
 
@@ -42,7 +42,6 @@ RabbitMQ's built-in management UI has barely changed in over a decade. It works,
 - 📦 **Queues & Streams** — Classic, Quorum, and Stream queue support with health scoring, consumer starvation alerts, and storage breakdowns.
 - 🔀 **Exchanges** — create, inspect, and test-publish messages with a rich payload editor and routing-key simulator.
 - 🔗 **Connections & Channels** — spot blocked or flow-throttled connections instantly, with per-client grouping and force-close controls.
-- 🚀 **Publisher Studio** — a built-in message composer for publishing test messages without leaving the browser.
 - 🛠️ **Shovels, Policies & Limits** — manage dynamic shovels, operator/user policies, and vhost/user limits from clean, guided forms.
 - 👤 **Users, VHosts & Permissions** — full admin surface for multi-tenant clusters, with regex permission testing built in.
 - 📤 **Definitions Import/Export** — back up or migrate your entire broker configuration in a couple of clicks.
@@ -53,7 +52,7 @@ RabbitMQ's built-in management UI has barely changed in over a decade. It works,
 
 ## ⚡ Quick Start
 
-### 1. Start a RabbitMQ broker (or point Thumber at your existing one)
+### 1. Start a RabbitMQ broker (or point Thumper at your existing one)
 
 A ready-to-use broker with the management plugin is included:
 
@@ -84,13 +83,13 @@ pnpm build
 pnpm preview
 ```
 
-Thumber builds to static files — serve them from any web server or CDN, in front of your RabbitMQ management API.
+Thumper builds to static files — serve them from any web server or CDN, in front of your RabbitMQ management API.
 
 ---
 
 ## 🛠️ Tech Stack
 
-Thumber is a single-page app with no backend of its own:
+Thumper is a single-page app with no backend of its own:
 
 - **React 19** + **TypeScript** for the UI
 - **TanStack Router / Query / Table** for routing, data fetching, and data grids
@@ -103,4 +102,4 @@ Thumber is a single-page app with no backend of its own:
 
 ## 📄 License
 
-Thumber is licensed under the [GNU Affero General Public License v3.0](./LICENSE) (AGPL-3.0) — free and open source. If you modify Thumber and run it as a network service, you must make the source of your version available to its users under the same license. Want to use it under different terms (e.g. embed it in a closed-source product)? Open an issue to discuss a commercial license.
+Thumper is licensed under the [GNU Affero General Public License v3.0](./LICENSE) (AGPL-3.0) — free and open source. If you modify Thumper and run it as a network service, you must make the source of your version available to its users under the same license. Want to use it under different terms (e.g. embed it in a closed-source product)? Open an issue to discuss a commercial license.

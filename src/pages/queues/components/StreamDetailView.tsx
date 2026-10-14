@@ -10,13 +10,18 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card/index.tsx";
+import { Dropdown } from "@/components/ui/dropdown/index.tsx";
 import type { Binding } from "@/services/rabbitmq/types/binding.ts";
+import type { Exchange } from "@/services/rabbitmq/types/exchange.ts";
 import type { Queue, QueueMessage } from "@/services/rabbitmq/types/queue.ts";
 import {
 	formatBytes,
 	formatNumber,
 	formatRate,
 } from "@/services/rabbitmq/utils.ts";
+import { cn } from "@/utilities/cn/index.ts";
+import { Tooltip } from "@/components/ui/tooltip/index.tsx";
+import { useAuth } from "@/hooks/useAuth/index.ts";
 import { Link } from "@tanstack/react-router";
 import {
 	CheckCircle2,
@@ -24,10 +29,13 @@ import {
 	Database,
 	History,
 	Link as LinkIcon,
+	Lock,
 	Network,
 	Radio,
 	RefreshCw,
 	Send,
+	Share2,
+	ShieldAlert,
 	Trash2,
 	Unlink,
 	Users,
@@ -55,8 +63,6 @@ interface StreamDetailViewProps {
 	bindings: Binding[];
 	topologyNodes: any[];
 	topologyEdges: any[];
-	pubRoutingKey: string;
-	setPubRoutingKey: (val: string) => void;
 	pubPayload: string;
 	setPubPayload: (val: string) => void;
 	isPublishing: boolean;
@@ -69,6 +75,14 @@ interface StreamDetailViewProps {
 	isBinding: boolean;
 	handleCreateBinding: (e: React.FormEvent) => void;
 	handleDeleteBinding: (source: string, propertiesKey: string) => void;
+	allExchanges?: Exchange[];
+	canRead?: boolean;
+	canWrite?: boolean;
+	canConfigure?: boolean;
+	hasVHostAccess?: boolean;
+	isAdminWithoutVHostPerms?: boolean;
+	isPermissionsLoading?: boolean;
+	messageAccessError?: string | null;
 }
 
 export function StreamDetailView({
@@ -87,8 +101,6 @@ export function StreamDetailView({
 	bindings,
 	topologyNodes,
 	topologyEdges,
-	pubRoutingKey,
-	setPubRoutingKey,
 	pubPayload,
 	setPubPayload,
 	isPublishing,
@@ -101,12 +113,33 @@ export function StreamDetailView({
 	isBinding,
 	handleCreateBinding,
 	handleDeleteBinding,
+	allExchanges = [],
+	canRead = true,
+	canWrite = true,
+	canConfigure = true,
+	hasVHostAccess = true,
+	isAdminWithoutVHostPerms = false,
+	isPermissionsLoading = false,
+	messageAccessError = null,
 }: StreamDetailViewProps) {
+	const { user } = useAuth();
 	const totalEvents = queue.messages || 0;
 	const pubRate = queue.message_stats?.publish_details?.rate || 0;
 	const deliverRate = queue.message_stats?.deliver_get_details?.rate || 0;
 	const consumerCount = queue.consumers || 0;
 	const currentBytes = queue.message_bytes || queue.memory || 0;
+
+	// Available exchanges for binding autocompletion
+	const exchangeOptions = React.useMemo(() => {
+		return allExchanges
+			.filter((ex) => ex.name && ex.name.trim() !== "")
+			.map((ex) => ({
+				label: ex.name,
+				value: ex.name,
+				subLabel: ex.type,
+				icon: <Share2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />,
+			}));
+	}, [allExchanges]);
 
 	const args = queue.arguments || {};
 	const maxLengthBytes = typeof args["x-max-length-bytes"] === "number"
@@ -163,8 +196,13 @@ export function StreamDetailView({
 	);
 
 	return (
-		<div className="space-y-6 pb-16">
-			<Breadcrumbs>
+		<div
+			className={cn(
+				"space-y-6",
+				resolvedTab === "topology" ? "flex-1 flex flex-col min-h-0" : "pb-16",
+			)}
+		>
+			<Breadcrumbs className="shrink-0">
 				<Link to="/queues" className="hover:text-foreground transition-colors">
 					Queues &amp; Streams
 				</Link>
@@ -175,7 +213,7 @@ export function StreamDetailView({
 			</Breadcrumbs>
 
 			{/* Stream Header */}
-			<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-border/50 pb-4">
+			<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-border/50 pb-4 shrink-0">
 				<div>
 					<div className="flex items-center gap-3">
 						<div className="flex h-9 w-9 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
@@ -235,20 +273,56 @@ export function StreamDetailView({
 						Refresh
 					</Button>
 
-					<Button
-						variant="outline"
-						size="sm"
-						onClick={onDeleteQueue}
-						className="h-8 text-xs text-destructive border-destructive/30 hover:bg-destructive/10"
-					>
-						<Trash2 className="h-3.5 w-3.5 mr-1" />
-						Delete Stream
-					</Button>
+					{canConfigure ? (
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={onDeleteQueue}
+							className="h-8 text-xs text-destructive border-destructive/30 hover:bg-destructive/10"
+						>
+							<Trash2 className="h-3.5 w-3.5 mr-1" />
+							Delete Stream
+						</Button>
+					) : (
+						<Tooltip content="Delete disabled: Configure permission required on this virtual host">
+							<Button
+								variant="outline"
+								size="sm"
+								disabled
+								className="h-8 text-xs text-muted-foreground border-border/40 opacity-50 cursor-not-allowed"
+							>
+								<Trash2 className="h-3.5 w-3.5 mr-1" />
+								Delete Stream
+							</Button>
+						</Tooltip>
+					)}
 				</div>
 			</div>
 
+			{/* Limited VHost Access Banner */}
+			{(!hasVHostAccess || isAdminWithoutVHostPerms) && !isPermissionsLoading && (
+				<div className="p-3.5 rounded-xl border border-amber-500/30 bg-amber-500/10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs text-amber-700 dark:text-amber-400 shrink-0">
+					<div className="flex items-start sm:items-center gap-2.5">
+						<ShieldAlert className="h-4 w-4 shrink-0 text-amber-500 mt-0.5 sm:mt-0" />
+						<div>
+							<span className="font-semibold">Limited Access Notice:</span> You do not have permissions granted on virtual host{" "}
+							<span className="font-mono font-bold text-foreground">{vhost}</span>. Stream operations are restricted by RabbitMQ.
+						</div>
+					</div>
+					{user?.tags?.includes("administrator") && (
+						<Link
+							to="/admin/$tab"
+							params={{ tab: "vhosts" }}
+							className="inline-flex items-center gap-1 font-medium underline hover:text-amber-800 dark:hover:text-amber-300 shrink-0 text-xs"
+						>
+							Manage Permissions
+						</Link>
+					)}
+				</div>
+			)}
+
 			{/* Stream Top Metric Cards */}
-			<div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+			<div className="grid grid-cols-2 md:grid-cols-4 gap-3 shrink-0">
 				{/* 1. Log Events & Offset */}
 				<Card className="border border-border/80 bg-card/60">
 					<CardContent className="p-4 space-y-1">
@@ -346,7 +420,7 @@ export function StreamDetailView({
 			</div>
 
 			{/* Stream Tab Navigation Bar */}
-			<div className="border-b border-border/60">
+			<div className="border-b border-border/60 shrink-0">
 				<div className="flex items-center gap-0.5 overflow-x-auto">
 					{tabs.map((tab) => (
 						<button
@@ -372,19 +446,46 @@ export function StreamDetailView({
 			</div>
 
 			{/* Stream Tab Content */}
-			<div className="animate-in fade-in duration-150">
+			<div
+				className={cn(
+					resolvedTab === "topology"
+						? "flex-1 flex flex-col min-h-0 transition-none"
+						: "animate-in fade-in duration-150",
+				)}
+			>
 				{/* ── Log Explorer (Time Travel) ── */}
 				{resolvedTab === "log" && (
-					<StreamLogExplorer
-						queue={queue}
-						vhost={vhost}
-						queueName={queueName}
-						messages={messages}
-						isFetching={isFetchingMessages}
-						onFetch={fetchMessages}
-						onSelectMessage={onSelectMessage}
-						onDuplicateMessage={onDuplicateMessage}
-					/>
+					messageAccessError || (!canRead && !isPermissionsLoading) ? (
+						<Card className="border border-border/80">
+							<CardContent className="py-12 flex flex-col items-center justify-center text-center px-4">
+								<div className="p-3 rounded-full bg-amber-500/10 text-amber-500 mb-3 border border-amber-500/20">
+									<Lock className="h-6 w-6" />
+								</div>
+								<h3 className="text-sm font-semibold text-foreground">
+									Log Inspection Restricted
+								</h3>
+								<p className="text-xs text-muted-foreground mt-1 max-w-md">
+									You do not have read permissions to inspect or read events from stream{" "}
+									<span className="font-mono text-foreground font-medium">{queueName}</span> in virtual host{" "}
+									<span className="font-mono text-foreground font-medium">{vhost}</span>.
+								</p>
+								<div className="mt-3 text-[11px] font-mono text-amber-700 dark:text-amber-400 bg-amber-500/10 px-3 py-1.5 rounded border border-amber-500/20">
+									{messageAccessError || "AMQP read permission required for this stream"}
+								</div>
+							</CardContent>
+						</Card>
+					) : (
+						<StreamLogExplorer
+							queue={queue}
+							vhost={vhost}
+							queueName={queueName}
+							messages={messages}
+							isFetching={isFetchingMessages}
+							onFetch={fetchMessages}
+							onSelectMessage={onSelectMessage}
+							onDuplicateMessage={onDuplicateMessage}
+						/>
+					)
 				)}
 
 				{/* ── Consumers & Lag ── */}
@@ -403,8 +504,8 @@ export function StreamDetailView({
 
 				{/* ── Topology ── */}
 				{resolvedTab === "topology" && (
-					<Card className="border-border bg-card/60 backdrop-blur-sm overflow-hidden">
-						<CardHeader className="p-4 pb-2 border-b border-border/60">
+					<Card className="flex-1 flex flex-col border-border bg-card/60 backdrop-blur-sm overflow-hidden min-h-[420px] transition-none">
+						<CardHeader className="p-4 pb-2 border-b border-border/60 shrink-0">
 							<div className="flex items-center justify-between">
 								<div className="flex items-center gap-2">
 									<Network className="h-4 w-4 text-cyan-400" />
@@ -420,13 +521,13 @@ export function StreamDetailView({
 								Visual map showing upstream exchanges routing events into this stream log and attached consumers.
 							</CardDescription>
 						</CardHeader>
-						<CardContent className="p-0">
+						<CardContent className="p-0 flex-1 min-h-0 flex flex-col transition-none">
 							<TopologyFlow
 								nodes={topologyNodes}
 								edges={topologyEdges}
-								height="400px"
+								height="100%"
 								showMinimap={false}
-								className="rounded-t-none border-0"
+								className="rounded-t-none border-0 flex-1 w-full transition-none"
 							/>
 						</CardContent>
 					</Card>
@@ -448,7 +549,7 @@ export function StreamDetailView({
 							</CardDescription>
 						</CardHeader>
 						<CardContent className="p-4 space-y-4">
-							<div className="space-y-2 max-h-72 overflow-y-auto">
+							<div className="space-y-2 max-h-72 overflow-y-auto scrollbar-thin">
 								{bindings.length === 0 ? (
 									<div className="text-xs text-muted-foreground font-mono py-4 text-center">
 										No bindings configured for this stream.
@@ -473,7 +574,7 @@ export function StreamDetailView({
 												</Badge>
 											</div>
 
-											{b.source !== "" && (
+											{b.source !== "" && canConfigure && (
 												<Button
 													variant="ghost"
 													size="sm"
@@ -491,40 +592,55 @@ export function StreamDetailView({
 								)}
 							</div>
 
-							<form
-								onSubmit={handleCreateBinding}
-								className="pt-2 border-t border-border/50 space-y-2"
-							>
-								<span className="text-xs font-semibold text-foreground block">
-									Bind from Exchange
-								</span>
-								<div className="grid grid-cols-2 gap-2">
-									<input
-										type="text"
-										required
-										value={bindExchange}
-										onChange={(e) => setBindExchange(e.target.value)}
-										placeholder="Source exchange (e.g. amq.direct)"
-										className="h-8 rounded border border-border bg-muted/20 px-2 text-xs font-mono focus:border-cyan-400 focus:outline-none"
-									/>
-									<input
-										type="text"
-										value={bindRoutingKey}
-										onChange={(e) => setBindRoutingKey(e.target.value)}
-										placeholder="Routing key (optional)"
-										className="h-8 rounded border border-border bg-muted/20 px-2 text-xs font-mono focus:border-cyan-400 focus:outline-none"
-									/>
+							{!canConfigure && !isPermissionsLoading && (
+								<div className="p-3 rounded-lg border border-amber-500/30 bg-amber-500/10 flex items-center gap-2.5 text-xs text-amber-700 dark:text-amber-400 mt-2">
+									<ShieldAlert className="h-4 w-4 shrink-0 text-amber-500" />
+									<span>Binding management restricted: Configure permission required on this virtual host.</span>
 								</div>
-								<Button
-									type="submit"
-									variant="outline"
-									size="sm"
-									disabled={isBinding || !bindExchange.trim()}
-									className="w-full h-8 text-xs font-mono"
+							)}
+
+							{canConfigure && (
+								<form
+									onSubmit={handleCreateBinding}
+									className="pt-2 border-t border-border/50 space-y-2"
 								>
-									{isBinding ? "Binding..." : "+ Bind Exchange"}
-								</Button>
-							</form>
+									<span className="text-xs font-semibold text-foreground block">
+										Bind from Exchange
+									</span>
+									<div className="grid grid-cols-2 gap-2">
+										<Dropdown<string>
+											value={bindExchange}
+											onChange={(val) => setBindExchange(val)}
+											options={exchangeOptions}
+											searchable
+											clearable
+											allowCustom
+											searchPlaceholder="Filter exchanges..."
+											placeholder="Source exchange (e.g. amq.direct)"
+											align="left"
+											className="w-full"
+											buttonClassName="h-8 w-full justify-between px-2 text-xs font-mono bg-muted/20 border-border"
+											contentClassName="w-full"
+										/>
+										<input
+											type="text"
+											value={bindRoutingKey}
+											onChange={(e) => setBindRoutingKey(e.target.value)}
+											placeholder="Routing key (optional)"
+											className="h-8 rounded border border-border bg-muted/20 px-2 text-xs font-mono focus:border-cyan-400 focus:outline-none"
+										/>
+									</div>
+									<Button
+										type="submit"
+										variant="outline"
+										size="sm"
+										disabled={isBinding || !bindExchange.trim()}
+										className="w-full h-8 text-xs font-mono"
+									>
+										{isBinding ? "Binding..." : "+ Bind Exchange"}
+									</Button>
+								</form>
+							)}
 						</CardContent>
 					</Card>
 				)}
@@ -554,40 +670,34 @@ export function StreamDetailView({
 							</div>
 						</CardHeader>
 						<CardContent className="p-4 space-y-3">
-							<form onSubmit={handlePublish} className="space-y-3">
-								<div className="space-y-1">
-									<label className="text-xs font-medium text-muted-foreground">
-										Routing Key
-									</label>
-									<input
-										type="text"
-										value={pubRoutingKey}
-										onChange={(e) => setPubRoutingKey(e.target.value)}
-										placeholder={queueName}
-										className="h-8 w-full rounded border border-border bg-muted/20 px-2.5 text-xs font-mono focus:border-cyan-400 focus:outline-none"
-									/>
+							{!canWrite && !isPermissionsLoading && (
+								<div className="p-3 rounded-lg border border-amber-500/30 bg-amber-500/10 flex items-center gap-2.5 text-xs text-amber-700 dark:text-amber-400">
+									<ShieldAlert className="h-4 w-4 shrink-0 text-amber-500" />
+									<span>Publishing restricted: You do not have write permission on this stream/virtual host.</span>
 								</div>
-
+							)}
+							<form onSubmit={handlePublish} className="space-y-3">
 								<PayloadEditor
 									value={pubPayload}
 									onChange={setPubPayload}
-									label="Payload (JSON or Raw Event)"
+									label="Payload"
 									rows={7}
 									placeholder='{"event": "user_signup", "userId": 1001}'
 								/>
 
 								<Button
 									type="submit"
-									disabled={isPublishing || !pubPayload.trim()}
-									className="w-full h-8 text-xs font-semibold bg-cyan-600 hover:bg-cyan-700 text-white"
+									disabled={isPublishing || !pubPayload.trim() || (!canWrite && !isPermissionsLoading)}
+									className="w-full h-8 text-xs font-semibold"
 								>
 									{isPublishing ? (
 										<>
-											<RefreshCw className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Appending...
+											<RefreshCw className="h-3.5 w-3.5 mr-1.5 animate-spin" />{" "}
+											Appending...
 										</>
 									) : (
 										<>
-											<Send className="h-3.5 w-3.5 mr-1.5" /> Append Event to Stream
+											<Send className="h-3.5 w-3.5 mr-1.5" /> Append Event
 										</>
 									)}
 								</Button>

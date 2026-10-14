@@ -94,26 +94,31 @@
   }
 }
 
-/* Minimal custom scrollbar, opt-in via .scrollbar-thin */
+/* Custom scrollbar styling: applied globally and via .scrollbar-thin */
+*,
 .scrollbar-thin {
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
 }
 
+*::-webkit-scrollbar,
 .scrollbar-thin::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
+*::-webkit-scrollbar-track,
 .scrollbar-thin::-webkit-scrollbar-track {
   background: transparent;
 }
 
+*::-webkit-scrollbar-thumb,
 .scrollbar-thin::-webkit-scrollbar-thumb {
   background-color: var(--border);
   border-radius: 9999px;
 }
 
+*::-webkit-scrollbar-thumb:hover,
 .scrollbar-thin::-webkit-scrollbar-thumb:hover {
   background-color: var(--muted-foreground);
 }
@@ -157,21 +162,51 @@
   display: none !important;
 }
 
-/* Drafting-table backdrop for the login screen: theme background, RabbitMQ-orange dots */
+/* Clean backdrop for the login screen with subtle dot grid */
 .login-canvas {
   background-color: var(--background);
-  background-image: radial-gradient(color-mix(in srgb, var(--primary) 16%, transparent) 1px, transparent 1px);
-  background-size: 24px 24px;
-  background-repeat: repeat;
-  animation: login-canvas-drift 30s linear infinite;
+  position: relative;
+  overflow: hidden;
+  min-height: 100vh;
 }
 
-@keyframes login-canvas-drift {
-  from {
-    background-position: 0 0;
+.login-dots-bg {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(color-mix(in srgb, var(--primary) 12%, transparent) 1px, transparent 1px);
+  background-size: 24px 24px;
+  background-repeat: repeat;
+  pointer-events: none;
+}
+
+.dark .login-dots-bg {
+  background-image: radial-gradient(color-mix(in srgb, var(--primary) 6.5%, transparent) 1px, transparent 1px);
+}
+
+
+
+/* One-shot "pop" entrance for the login logo mark and wordmark: a quick
+   overshoot scale-in, then settles — no continuous looping animation. */
+.login-pop-in {
+  animation: login-pop-in 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.login-pop-in-delay {
+  animation-delay: 0.1s;
+}
+
+@keyframes login-pop-in {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
   }
-  to {
-    background-position: 24px 24px;
+  60% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
   }
 }
 

@@ -630,8 +630,8 @@ to attach them to the start of each source file to most effectively
 state the exclusion of warranty; and each file should have at least
 the "copyright" line and a pointer to where the full notice is found.
 
-    Thumber
-    Copyright (C) 2026  Thumber contributors
+    Thumper
+    Copyright (C) 2026  Thumper contributors
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published
@@ -663,7 +663,7 @@ see <https://www.gnu.org/licenses/>.
 
 ---
 
-Want to use Thumber without complying with the AGPL's source-disclosure
+Want to use Thumper without complying with the AGPL's source-disclosure
 obligations (e.g. embed it in a closed-source product or SaaS offering)?
 A separate commercial license is available on request — open an issue at
-https://github.com/naueramant/thumber/issues.
+https://github.com/naueramant/thumper/issues.

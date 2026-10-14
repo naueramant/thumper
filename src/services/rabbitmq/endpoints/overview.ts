@@ -2,6 +2,7 @@ import type { RabbitMQClient } from '../client.ts';
 import type {
   ClusterNameResponse,
   Extension,
+  OverviewQueryOptions,
   RabbitMQOverview,
   WhoamiResponse,
 } from '../types/overview.ts';
@@ -17,7 +18,7 @@ export class OverviewApi {
   /**
    * Retrieves overall cluster state, version metrics, global rates, and listener status.
    */
-  async getOverview(options?: { columns?: string[]; disable_stats?: boolean }): Promise<RabbitMQOverview> {
+  async getOverview(options?: OverviewQueryOptions): Promise<RabbitMQOverview> {
     return this.client.request<RabbitMQOverview>('/api/overview', {
       query: options,
     });

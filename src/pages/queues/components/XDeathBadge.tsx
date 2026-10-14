@@ -83,7 +83,7 @@ export function XDeathBadge({
 			<Icon className="h-3 w-3 shrink-0" />
 			<span>{style.label}</span>
 			{count > 1 && (
-				<span className="opacity-80 px-1 py-0.2 rounded bg-black/20 text-[9px]">
+				<span className="inline-flex items-center opacity-80 px-1 py-0.5 leading-none rounded bg-black/20 text-[9px]">
 					&times;{count}
 				</span>
 			)}

@@ -1,4 +1,3 @@
-import { useConfirm } from "@/components/ConfirmDialog/index.tsx";
 import { QuickFilters } from "@/components/common/QuickFilters/index.tsx";
 import { TableFilters } from "@/components/common/TableFilters/index.tsx";
 import { Badge } from "@/components/ui/badge/index.tsx";
@@ -30,6 +29,8 @@ import { useUrlState } from "@/hooks/useUrlState/index.ts";
 import { useVHost } from "@/hooks/useVHost/index.ts";
 import type { Exchange } from "@/services/rabbitmq/types/exchange.ts";
 import { EXCHANGE_TYPE_DESCRIPTIONS } from "@/services/rabbitmq/utils.ts";
+import { useAuth } from "@/hooks/useAuth/index.ts";
+import { useResourcePermissions } from "@/hooks/usePermissions/index.ts";
 import { Link } from "@tanstack/react-router";
 import {
 	createColumnHelper,
@@ -44,11 +45,10 @@ import {
 	ArrowUp,
 	ArrowUpDown,
 	ChevronRight,
-	Eye,
 	Plus,
 	Search,
 	Share2,
-	Trash2,
+	ShieldAlert,
 	X,
 } from "lucide-react";
 import * as React from "react";
@@ -57,9 +57,21 @@ const columnHelper = createColumnHelper<Exchange>();
 
 export function ExchangesPage() {
 	const { selectedVHost, availableVHosts } = useVHost();
-	const confirm = useConfirm();
-	const { data: exchanges = [], isLoading } = useRabbitExchanges(selectedVHost);
-	const { createExchange, deleteExchange } = useRabbitMutations();
+	const { user } = useAuth();
+	const permissions = useResourcePermissions({ vhost: selectedVHost });
+	const {
+		hasVHostAccess,
+		canConfigure,
+		isAdminWithoutVHostPerms,
+		isLoading: isPermissionsLoading,
+	} = permissions;
+
+	const {
+		data: exchanges = [],
+		isLoading,
+		error: exchangesError,
+	} = useRabbitExchanges(selectedVHost);
+	const { createExchange } = useRabbitMutations();
 
 	const [urlState, setUrlState] = useUrlState({
 		q: "",
@@ -111,7 +123,11 @@ export function ExchangesPage() {
 
 	// Add exchange form state
 	const [newVHost, setNewVHost] = React.useState(
-		selectedVHost === "all" ? "/" : selectedVHost,
+		selectedVHost === "all"
+			? availableVHosts.some((v) => v.name === "/")
+				? "/"
+				: availableVHosts[0]?.name || "/"
+			: selectedVHost,
 	);
 	const [newName, setNewName] = React.useState("");
 	const [newType, setNewType] = React.useState<
@@ -220,25 +236,6 @@ export function ExchangesPage() {
 		}
 	};
 
-	const handleDeleteExchange = React.useCallback(
-		async (ex: Exchange) => {
-			if (
-				!(await confirm({
-					title: "Delete Exchange?",
-					description: `Are you sure you want to delete exchange "${ex.name}" in vhost "${ex.vhost}"?`,
-					confirmLabel: "Delete Exchange",
-				}))
-			)
-				return;
-			try {
-				await deleteExchange.mutateAsync({ vhost: ex.vhost, name: ex.name });
-			} catch (err: any) {
-				toast.error("Failed to delete exchange", err.message || String(err));
-			}
-		},
-		[confirm, deleteExchange],
-	);
-
 	const columns = React.useMemo(
 		() => [
 			columnHelper.accessor("name", {
@@ -263,7 +260,7 @@ export function ExchangesPage() {
 									<ChevronRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity text-primary" />
 								</span>
 								{isDefault && (
-									<Badge variant="secondary" className="text-[9px] py-0">
+									<Badge variant="secondary" className="text-[9px]">
 										System Default
 									</Badge>
 								)}
@@ -283,7 +280,7 @@ export function ExchangesPage() {
 						<Tooltip content={EXCHANGE_TYPE_DESCRIPTIONS[type] ?? type}>
 							<Badge
 								variant="outline"
-								className={`font-mono text-[10px] uppercase cursor-default ${
+								className={`text-[10px] capitalize cursor-default ${
 									type === "topic"
 										? "border-purple-500/30 text-purple-400 bg-purple-500/10"
 										: type === "fanout"
@@ -304,10 +301,10 @@ export function ExchangesPage() {
 				cell: (info) => {
 					const row = info.row.original;
 					return (
-						<div className="flex items-center gap-1">
+						<div className="inline-flex items-center gap-1">
 							<Badge
 								variant="outline"
-								className="text-[10px] px-1.5 py-0 font-mono"
+								className="text-[10px] px-1.5 font-mono"
 								title={row.durable ? "Durable" : "Transient"}
 							>
 								{row.durable ? "D" : "T"}
@@ -315,7 +312,7 @@ export function ExchangesPage() {
 							{row.internal && (
 								<Badge
 									variant="secondary"
-									className="text-[10px] px-1.5 py-0 font-mono"
+									className="text-[10px] px-1.5 font-mono"
 									title="Internal only"
 								>
 									I
@@ -324,7 +321,7 @@ export function ExchangesPage() {
 							{row.auto_delete && (
 								<Badge
 									variant="warning"
-									className="text-[10px] px-1.5 py-0 font-mono"
+									className="text-[10px] px-1.5 font-mono"
 									title="Auto Delete"
 								>
 									AD
@@ -364,56 +361,8 @@ export function ExchangesPage() {
 					},
 				},
 			),
-			columnHelper.display({
-				id: "actions",
-				header: "",
-				cell: (info) => {
-					const ex = info.row.original;
-					const rawName = ex.name || "(default)";
-					const isSystem = ex.name.startsWith("amq.") || !ex.name;
-					return (
-						<div className="flex items-center justify-end gap-1">
-							<Link
-								to="/exchanges/$vhost/$name"
-								params={{
-									vhost: encodeURIComponent(ex.vhost),
-									name: encodeURIComponent(rawName),
-								}}
-							>
-								<Button
-									variant="ghost"
-									size="sm"
-									className="h-6 text-[11px] px-2 text-primary hover:bg-primary/10"
-									title="Explore Exchange Details & Routing"
-								>
-									<Eye className="h-3 w-3 mr-1" />
-									Explore
-								</Button>
-							</Link>
-							<span
-								title={
-									isSystem
-										? "System exchanges cannot be deleted"
-										: "Delete Exchange"
-								}
-								className="inline-flex"
-							>
-								<Button
-									variant="ghost"
-									size="sm"
-									onClick={() => handleDeleteExchange(ex)}
-									disabled={isSystem}
-									className="h-6 w-6 p-0 text-destructive hover:bg-destructive/10"
-								>
-									<Trash2 className="h-3 w-3" />
-								</Button>
-							</span>
-						</div>
-					);
-				},
-			}),
 		],
-		[handleDeleteExchange],
+		[],
 	);
 
 	const table = useReactTable({
@@ -436,20 +385,73 @@ export function ExchangesPage() {
 						</h1>
 					</div>
 					<p className="text-xs text-muted-foreground">
-						Message routing exchanges and topology bindings in vhost{" "}
-						<strong className="text-primary font-mono">{selectedVHost}</strong>
+						Message routing exchanges and topology bindings{" "}
+						{selectedVHost === "all" ? (
+							"across all virtual hosts"
+						) : (
+							<>
+								in vhost{" "}
+								<strong className="text-primary font-mono">{selectedVHost}</strong>
+							</>
+						)}
 					</p>
 				</div>
 				<div className="flex items-center gap-2">
-					<Button
-						size="sm"
-						onClick={() => setIsAddModalOpen(true)}
-						className="text-xs"
-					>
-						<Plus className="h-4 w-4 mr-1" /> Add Exchange
-					</Button>
+					{canConfigure ? (
+						<Button
+							size="sm"
+							onClick={() => {
+								if (
+									newVHost === "all" ||
+									!availableVHosts.some((v) => v.name === newVHost)
+								) {
+									setNewVHost(
+										availableVHosts.some((v) => v.name === "/")
+											? "/"
+											: availableVHosts[0]?.name || "/",
+									);
+								}
+								setIsAddModalOpen(true);
+							}}
+							className="text-xs"
+						>
+							<Plus className="h-4 w-4 mr-1" /> Add Exchange
+						</Button>
+					) : (
+						<Tooltip content="Add Exchange disabled: Configure permission required on this virtual host">
+							<Button
+								size="sm"
+								disabled
+								className="text-xs opacity-50 cursor-not-allowed"
+							>
+								<Plus className="h-4 w-4 mr-1" /> Add Exchange
+							</Button>
+						</Tooltip>
+					)}
 				</div>
 			</div>
+
+			{/* Limited VHost Access Banner */}
+			{selectedVHost !== "all" && (!hasVHostAccess || isAdminWithoutVHostPerms) && !isPermissionsLoading && (
+				<div className="p-3.5 rounded-xl border border-amber-500/30 bg-amber-500/10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs text-amber-700 dark:text-amber-400">
+					<div className="flex items-start sm:items-center gap-2.5">
+						<ShieldAlert className="h-4 w-4 shrink-0 text-amber-500 mt-0.5 sm:mt-0" />
+						<div>
+							<span className="font-semibold">Limited Access Notice:</span> You do not have permissions granted on virtual host{" "}
+							<span className="font-mono font-bold text-foreground">{selectedVHost}</span>. Exchange operations (declaring, publishing) are restricted by RabbitMQ.
+						</div>
+					</div>
+					{user?.tags?.includes("administrator") && (
+						<Link
+							to="/admin/$tab"
+							params={{ tab: "vhosts" }}
+							className="inline-flex items-center gap-1 font-medium underline hover:text-amber-800 dark:hover:text-amber-300 shrink-0 text-xs"
+						>
+							Manage Permissions
+						</Link>
+					)}
+				</div>
+			)}
 
 			{/* Main Table Card */}
 			<Card>
@@ -553,7 +555,30 @@ export function ExchangesPage() {
 							))}
 						</TableHeader>
 						<TableBody>
-							{table.getRowModel().rows.length ? (
+							{exchangesError ? (
+								<TableRow>
+									<TableCell
+										colSpan={columns.length}
+										className="h-32 text-center text-muted-foreground text-xs"
+									>
+										<div className="flex flex-col items-center justify-center gap-1.5 py-4">
+											<div className="p-2 rounded-full bg-amber-500/10 text-amber-500 mb-1 border border-amber-500/20">
+												<ShieldAlert className="h-5 w-5" />
+											</div>
+											<span className="font-semibold text-foreground">
+												{(exchangesError as any)?.status === 401 || (exchangesError as any)?.status === 403
+													? "Access Denied"
+													: "Failed to load exchanges"}
+											</span>
+											<span className="text-muted-foreground max-w-sm">
+												{(exchangesError as any)?.status === 401 || (exchangesError as any)?.status === 403
+													? `You do not have permission to view exchanges in virtual host "${selectedVHost}".`
+													: exchangesError.message || "An error occurred while loading exchanges."}
+											</span>
+										</div>
+									</TableCell>
+								</TableRow>
+							) : table.getRowModel().rows.length ? (
 								table.getRowModel().rows.map((row) => (
 									<TableRow key={row.id}>
 										{row.getVisibleCells().map((cell) => (
@@ -707,7 +732,7 @@ export function ExchangesPage() {
 							<div className="flex justify-end gap-2 pt-3 border-t border-border">
 								<Button
 									type="button"
-									variant="outline"
+									variant="secondary"
 									size="sm"
 									onClick={() => setIsAddModalOpen(false)}
 								>

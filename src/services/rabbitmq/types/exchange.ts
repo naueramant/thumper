@@ -50,3 +50,10 @@ export interface PublishMessageRequest {
 export interface PublishMessageResponse {
   routed: boolean;
 }
+
+export interface ExchangeQueryOptions extends Record<string, unknown> {
+  msg_rates_age?: number;
+  msg_rates_incr?: number;
+  data_rates_age?: number;
+  data_rates_incr?: number;
+}

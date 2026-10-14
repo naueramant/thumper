@@ -78,3 +78,12 @@ export interface QueueMessage {
 export interface PurgeQueueResponse {
   message_count: number;
 }
+
+export interface QueueQueryOptions extends Record<string, unknown> {
+  lengths_age?: number;
+  lengths_incr?: number;
+  msg_rates_age?: number;
+  msg_rates_incr?: number;
+  data_rates_age?: number;
+  data_rates_incr?: number;
+}

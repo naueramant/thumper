@@ -29,15 +29,31 @@ export class RabbitMQApiError extends RabbitMQError {
 }
 
 export class AuthenticationError extends RabbitMQApiError {
-  constructor(message = 'Invalid username or password', endpoint?: string) {
-    super(message, 401, 'Unauthorized', { endpoint, reason: 'Unauthorized' });
+  constructor(
+    message = 'Invalid username or password',
+    endpoint?: string,
+    options?: { error?: string; reason?: string }
+  ) {
+    super(message, 401, 'Unauthorized', {
+      endpoint,
+      reason: options?.reason || 'Unauthorized',
+      error: options?.error,
+    });
     this.name = 'AuthenticationError';
   }
 }
 
 export class ForbiddenError extends RabbitMQApiError {
-  constructor(message = 'Access forbidden to requested resource', endpoint?: string) {
-    super(message, 403, 'Forbidden', { endpoint, reason: 'Forbidden' });
+  constructor(
+    message = 'Access forbidden to requested resource',
+    endpoint?: string,
+    options?: { error?: string; reason?: string }
+  ) {
+    super(message, 403, 'Forbidden', {
+      endpoint,
+      reason: options?.reason || 'Forbidden',
+      error: options?.error,
+    });
     this.name = 'ForbiddenError';
   }
 }

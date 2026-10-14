@@ -2,6 +2,7 @@ import {
 	createRabbitMQClient,
 	type RabbitMQClient,
 } from "@/services/rabbitmq/index.ts";
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
 export interface UserProfile {
@@ -72,6 +73,7 @@ export function updateStoredClusterUrl(newUrl: string): UserProfile | null {
 
 export function useAuth() {
 	const [user, setUser] = useState<UserProfile | null>(() => getStoredAuth());
+	const queryClient = useQueryClient();
 
 	useEffect(() => {
 		if (user) {
@@ -89,6 +91,7 @@ export function useAuth() {
 		tags: string[] = ["administrator"],
 		token?: string,
 	) => {
+		queryClient.clear();
 		const profile: UserProfile = {
 			username,
 			password,
@@ -97,18 +100,25 @@ export function useAuth() {
 			clusterUrl: clusterUrl || "http://localhost:15672",
 			loggedInAt: new Date().toISOString(),
 		};
+		// Persist synchronously: callers often navigate() immediately after
+		// login(), and route guards read localStorage synchronously too. If we
+		// only wrote it from the effect below, that write could lose the race
+		// against the navigation's beforeLoad check and bounce back to /login.
+		localStorage.setItem(AUTH_KEY, JSON.stringify(profile));
 		setUser(profile);
 		cachedClient = null;
 		return profile;
 	};
 
 	const logout = () => {
+		queryClient.clear();
 		setUser(null);
 		localStorage.removeItem(AUTH_KEY);
 		cachedClient = null;
 	};
 
 	const updateClusterUrl = (newUrl: string) => {
+		queryClient.clear();
 		setUser((prev) => {
 			if (!prev) return null;
 			return { ...prev, clusterUrl: newUrl };

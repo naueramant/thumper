@@ -40,7 +40,7 @@ const RESOURCE_LINKS = [
 	},
 ];
 
-const REPO_URL = "https://github.com/naueramant/thumber";
+const REPO_URL = "https://github.com/naueramant/thumper";
 
 const SUPPORT_LINKS = [
 	{
@@ -83,7 +83,7 @@ export function HelpPage() {
 						</div>
 						<div>
 							<div className="text-sm font-semibold">
-								Thumber is open source
+								Thumper is open source
 							</div>
 							<p className="text-xs opacity-80">
 								Star it, browse the code, or contribute on GitHub.
@@ -112,7 +112,7 @@ export function HelpPage() {
 								<Activity className="h-4 w-4 stroke-[2.5]" />
 							</div>
 							<div>
-								<CardTitle>Thumber</CardTitle>
+								<CardTitle>Thumper</CardTitle>
 								<CardDescription>
 									A modern, fast dashboard for RabbitMQ.
 								</CardDescription>
@@ -121,7 +121,7 @@ export function HelpPage() {
 					</CardHeader>
 					<CardContent className="space-y-3 text-sm text-muted-foreground">
 						<p>
-							Thumber is an alternative to the built-in RabbitMQ management
+							Thumper is an alternative to the built-in RabbitMQ management
 							UI, focused on speed, clarity, and a more modern editing
 							experience for connections, channels, exchanges, queues, and
 							cluster administration.
@@ -165,7 +165,7 @@ export function HelpPage() {
 					</CardHeader>
 					<CardContent className="space-y-2 text-sm text-muted-foreground">
 						<p>
-							Thumber is licensed under the{" "}
+							Thumper is licensed under the{" "}
 							<a
 								href={`${REPO_URL}/blob/main/LICENSE`}
 								target="_blank"
@@ -181,7 +181,7 @@ export function HelpPage() {
 							request a commercial license.
 						</p>
 						<p>
-							Thumber is an independent project and is not affiliated with or
+							Thumper is an independent project and is not affiliated with or
 							endorsed by Broadcom/VMware or the RabbitMQ project.
 						</p>
 						<p>RabbitMQ is a trademark of Broadcom Inc.</p>

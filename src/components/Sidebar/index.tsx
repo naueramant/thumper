@@ -101,17 +101,14 @@ export function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
 				{/* Brand Title (smoothly expands without layout jumping) */}
 				<div
 					className={cn(
-						"flex flex-col min-w-0 overflow-hidden whitespace-nowrap pl-1 transition-all duration-300 ease-[cubic-bezier(0.2,0,0,1)]",
+						"flex items-center min-w-0 overflow-hidden whitespace-nowrap pl-1 transition-all duration-300 ease-[cubic-bezier(0.2,0,0,1)]",
 						isCollapsed
 							? "max-w-0 opacity-0 -translate-x-2 pointer-events-none"
-							: "max-w-[100px] opacity-100 translate-x-0",
+							: "max-w-[120px] opacity-100 translate-x-0",
 					)}
 				>
-					<span className="font-bold tracking-tight text-foreground text-sm leading-tight truncate">
-						Thumber
-					</span>
-					<span className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground truncate leading-tight">
-						RabbitMQ {rabbitmqVersion ?? "—"}
+					<span className="font-extrabold tracking-tight text-foreground text-base leading-none select-none">
+						thumper<span className="text-primary">.</span>
 					</span>
 				</div>
 
@@ -148,7 +145,7 @@ export function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
 			</div>
 
 			{/* Navigation */}
-			<nav className="flex-1 px-2 py-1 overflow-y-auto overflow-x-hidden space-y-2.5">
+			<nav className="flex-1 px-2 py-1 overflow-y-auto overflow-x-hidden space-y-2.5 scrollbar-thin">
 				{effectiveNavGroups.map((group, groupIdx) => {
 					if (group.adminOnly && !isAdmin) return null;
 
@@ -246,89 +243,84 @@ export function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
 				</Link>
 			</div>
 
-			{/* Cluster Footer */}
-			<div className="p-2">
+			{/* Cluster Footer Status Bar */}
+			<div className="p-2 border-t border-border/40">
 				<div className="group relative">
-					{/* Unified Animated Cluster Card */}
+					{/* Sleek single-line status row */}
 					<div
 						className={cn(
-							"relative overflow-hidden rounded-lg border border-border/60 transition-all duration-300 ease-[cubic-bezier(0.2,0,0,1)]",
+							"group/pill relative flex items-center h-9 rounded-lg border border-border/50 bg-muted/20 text-xs transition-colors duration-200 overflow-hidden",
 							isCollapsed
-								? "h-9.5 bg-muted/40 hover:bg-muted/70 text-muted-foreground hover:text-foreground cursor-pointer"
-								: "h-[58px] bg-muted/30 p-2.5",
+								? "w-full justify-start cursor-pointer hover:bg-muted/60"
+								: "w-full hover:bg-muted/40 cursor-default",
 						)}
 					>
-						{/* Collapsed Icon View (centered on icon rail at 32px, scales/fades) */}
-						<div
-							className={cn(
-								"absolute inset-0 flex items-center justify-center transition-all duration-300 ease-[cubic-bezier(0.2,0,0,1)]",
-								isCollapsed
-									? "opacity-100 scale-100"
-									: "opacity-0 scale-75 pointer-events-none",
-							)}
-						>
+						{/* Icon rail (centered at 32px to match nav item icons) */}
+						<div className="flex h-9 w-12 shrink-0 items-center justify-center">
 							<div className="relative inline-flex items-center justify-center">
-								<Server className="h-4.5 w-4.5" />
-								<span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-card" />
+								<Server className="h-4 w-4 text-muted-foreground group-hover/pill:text-foreground transition-colors" />
+								<span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
+									<span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+									<span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+								</span>
 							</div>
 						</div>
 
-						{/* Expanded Info View (slides and fades in with top header timing) */}
+						{/* Cluster Name (smoothly animates on sidebar expand/collapse, right-aligned) */}
 						<div
 							className={cn(
-								"flex flex-col justify-between h-full transition-all duration-300 ease-[cubic-bezier(0.2,0,0,1)]",
+								"flex items-center justify-end flex-1 min-w-0 pr-3 overflow-hidden whitespace-nowrap transition-all duration-300 ease-[cubic-bezier(0.2,0,0,1)]",
 								isCollapsed
-									? "opacity-0 -translate-x-2 pointer-events-none"
-									: "opacity-100 translate-x-0",
+									? "max-w-0 opacity-0 -translate-x-2 pointer-events-none"
+									: "max-w-[150px] opacity-100 translate-x-0",
 							)}
 						>
-							<div className="flex items-center justify-between text-xs">
-								<div className="flex items-center gap-1.5 text-foreground font-medium truncate">
-									<Server className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-									<span
-										className="truncate font-mono text-[11px]"
-										title={clusterName ?? "—"}
-									>
-										{clusterName ?? "—"}
-									</span>
-								</div>
-								<span
-									className="inline-block h-2 w-2 shrink-0 rounded-full bg-emerald-500"
-									title="Connected"
-								/>
+							<span
+								className="truncate font-mono text-[11px] font-medium text-foreground text-right"
+								title={clusterName ?? "—"}
+							>
+								{clusterName ?? "RabbitMQ"}
+							</span>
+						</div>
+					</div>
+
+					{/* Hover Details Popover (flyout to right when collapsed, drops up above when expanded) */}
+					<div
+						className={cn(
+							"invisible absolute z-50 rounded-lg border border-border bg-popover text-popover-foreground p-3 shadow-xl opacity-0 transition-all duration-150 group-hover:visible group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto",
+							isCollapsed
+								? "bottom-0 left-full ml-3 w-56 -translate-x-1 group-hover:translate-x-0"
+								: "bottom-full left-0 right-0 mb-2 translate-y-1 group-hover:translate-y-0",
+						)}
+					>
+						<div className="flex items-center justify-between">
+							<div className="flex items-center gap-1.5 min-w-0">
+								<Server className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+								<span className="truncate font-mono text-xs font-semibold text-foreground">
+									{clusterName ?? "RabbitMQ Cluster"}
+								</span>
 							</div>
-							<div className="flex justify-between text-[10px] text-muted-foreground whitespace-nowrap">
-								<span>Erlang {overview?.erlang_version ?? "—"}</span>
-								<span className="text-primary font-medium">
-									{overview ? (overview.object_totals?.queues ?? 0) : "—"} queues
+							<div className="flex items-center gap-1 text-[10px] text-emerald-500 font-medium shrink-0 ml-2">
+								<span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+								<span>Connected</span>
+							</div>
+						</div>
+
+						<div className="mt-2.5 space-y-1.5 border-t border-border/50 pt-2 text-[11px]">
+							<div className="flex items-center justify-between">
+								<span className="text-muted-foreground">RabbitMQ</span>
+								<span className="font-mono text-foreground">
+									{rabbitmqVersion ?? "—"}
+								</span>
+							</div>
+							<div className="flex items-center justify-between">
+								<span className="text-muted-foreground">Erlang</span>
+								<span className="font-mono text-foreground">
+									{overview?.erlang_version ?? "—"}
 								</span>
 							</div>
 						</div>
 					</div>
-
-					{/* Hover flyout with full cluster info (collapsed state only) */}
-					{isCollapsed && (
-						<div className="invisible absolute bottom-0 left-full z-50 ml-3 w-56 rounded-lg border border-border bg-card p-2.5 opacity-0 shadow-xl transition-all duration-150 group-hover:visible group-hover:opacity-100 group-hover:translate-x-0 -translate-x-1 pointer-events-none group-hover:pointer-events-auto">
-							<div className="flex items-center justify-between text-xs">
-								<div className="flex items-center gap-1.5 text-foreground font-medium truncate">
-									<Server className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-									<span className="truncate font-mono text-[11px]">
-										{clusterName ?? "—"}
-									</span>
-								</div>
-								<span
-									className="inline-block h-2 w-2 shrink-0 rounded-full bg-emerald-500"
-									title="Connected"
-								/>
-							</div>
-							<div className="mt-1.5 flex justify-between text-[10px] text-muted-foreground border-t border-border/40 pt-1.5">
-								<span>Erlang {overview?.erlang_version ?? "—"}</span>
-								<span className="text-primary font-medium">
-									{overview ? (overview.object_totals?.queues ?? 0) : "—"} queues
-								</span>
-							</div>
-						</div>
-					)}
 				</div>
 			</div>
 		</aside>

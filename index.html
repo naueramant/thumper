@@ -3,8 +3,24 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Thumber</title>
+    <title>Thumper</title>
+    <script>
+      // Apply the theme class before first paint to avoid a flash of the
+      // wrong theme; useTheme() re-applies this on mount but that runs too
+      // late (after the initial paint) to prevent the flash on its own.
+      (function () {
+        try {
+          var saved = localStorage.getItem("rabbitdash-theme");
+          var isDark =
+            saved === "dark" ||
+            (saved !== "light" &&
+              window.matchMedia("(prefers-color-scheme: dark)").matches);
+          if (isDark) document.documentElement.classList.add("dark");
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge/index.tsx";
 import { Button } from "@/components/ui/button/index.tsx";
+import { JsonHighlighter } from "@/components/common/JsonViewer";
 import { cn } from "@/utilities/cn/index.ts";
 import {
 	BellRing,
@@ -486,7 +487,7 @@ export function ClientCapabilitiesSection({
 										<td className="py-2.5 px-3.5">
 											<Badge
 												variant="secondary"
-												className="text-[9px] py-0 font-normal"
+												className="text-[9px] font-normal"
 											>
 												{category}
 											</Badge>
@@ -534,7 +535,7 @@ export function ClientCapabilitiesSection({
 					>
 						<span className="flex items-center gap-1.5">
 							<Terminal className="h-3.5 w-3.5" />
-							Raw Capabilities Payload (JSON)
+							Raw Capabilities (JSON)
 						</span>
 						{showRawJson ? (
 							<ChevronUp className="h-3.5 w-3.5" />
@@ -543,8 +544,13 @@ export function ClientCapabilitiesSection({
 						)}
 					</button>
 					{showRawJson && (
-						<div className="p-3 border-t border-border/40 bg-muted/20 font-mono text-[11px] overflow-x-auto text-foreground">
-							<pre>{JSON.stringify(capabilities, null, 2)}</pre>
+						<div className="p-3 border-t border-border/40 bg-muted/20">
+							<JsonHighlighter
+								content={JSON.stringify(capabilities, null, 2)}
+								language="json"
+								showLineNumbers
+								showToggle
+							/>
 						</div>
 					)}
 				</div>

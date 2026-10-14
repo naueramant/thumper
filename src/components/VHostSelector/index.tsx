@@ -1,3 +1,4 @@
+import { useCurrentUserPermissions } from "@/hooks/usePermissions/index.ts";
 import { useVHost } from "@/hooks/useVHost/index.ts";
 import { cn } from "@/utilities/cn/index.ts";
 import {
@@ -5,6 +6,7 @@ import {
 	Check,
 	ChevronDown,
 	ListOrdered,
+	Lock,
 	Mail,
 	Network,
 	Radio,
@@ -14,9 +16,23 @@ import * as React from "react";
 
 export function VHostSelector() {
 	const { selectedVHost, setSelectedVHost, availableVHosts } = useVHost();
+	const { data: userPermissions = [] } = useCurrentUserPermissions();
 	const [isOpen, setIsOpen] = React.useState(false);
 	const [search, setSearch] = React.useState("");
 	const containerRef = React.useRef<HTMLDivElement>(null);
+
+	const hasPermissionForVHost = React.useCallback(
+		(vhostName: string) => {
+			if (!userPermissions || userPermissions.length === 0) return true;
+			return userPermissions.some((p) => p.vhost === vhostName);
+		},
+		[userPermissions],
+	);
+
+	const isCurrentRestricted =
+		selectedVHost !== "all" &&
+		userPermissions.length > 0 &&
+		!hasPermissionForVHost(selectedVHost);
 
 	React.useEffect(() => {
 		function handleClickOutside(event: MouseEvent) {
@@ -76,7 +92,14 @@ export function VHostSelector() {
 				<span className="text-muted-foreground text-[11px] font-sans">
 					vhost:
 				</span>
-				<span className="font-semibold text-primary">{displayLabel}</span>
+				<span className="font-semibold text-primary flex items-center gap-1">
+					{displayLabel}
+					{isCurrentRestricted && (
+						<span title="Restricted AMQP permissions on this virtual host">
+							<Lock className="h-3 w-3 text-amber-500 shrink-0" />
+						</span>
+					)}
+				</span>
 				<ChevronDown
 					className={cn(
 						"h-3 w-3 text-muted-foreground ml-0.5 shrink-0 transition-transform duration-150",
@@ -91,7 +114,7 @@ export function VHostSelector() {
 					className="absolute top-9 right-0 z-50 w-72 rounded-md border border-border bg-card p-1.5 text-foreground shadow-lg animate-in fade-in-50 zoom-in-95"
 				>
 					<div className="relative mb-1.5">
-						<Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+						<Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
 						<input
 							type="text"
 							placeholder="Search vhosts..."
@@ -138,6 +161,9 @@ export function VHostSelector() {
 						{filteredVHosts.length > 0
 							? filteredVHosts.map((v) => {
 									const isSelected = v.name === selectedVHost;
+									const isRestricted =
+										userPermissions.length > 0 &&
+										!hasPermissionForVHost(v.name);
 									return (
 										<button
 											key={v.name}
@@ -160,6 +186,15 @@ export function VHostSelector() {
 													>
 														{v.name}
 													</span>
+													{isRestricted && (
+														<span
+															className="flex items-center gap-0.5 shrink-0 rounded bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-medium text-amber-600 dark:text-amber-400"
+															title="No AMQP permissions configured for your user on this virtual host"
+														>
+															<Lock className="h-2.5 w-2.5" />
+															restricted
+														</span>
+													)}
 													{v.tracing && (
 														<span className="flex items-center gap-0.5 shrink-0 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-medium text-amber-500">
 															<Radio className="h-2.5 w-2.5" />

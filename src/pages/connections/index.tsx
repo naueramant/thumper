@@ -36,7 +36,7 @@ import {
 	ArrowLeftRight,
 	ArrowUp,
 	ArrowUpDown,
-	Eye,
+	ChevronRight,
 	Lock,
 	Search,
 	ShieldCheck,
@@ -183,10 +183,11 @@ export function ConnectionsPage() {
 						<Link
 							to="/connections/$name"
 							params={{ name: encodeURIComponent(conn.name) }}
-							className="flex flex-col max-w-xs group"
+							className="flex flex-col max-w-xs group cursor-pointer"
 						>
-							<span className="font-semibold text-foreground group-hover:text-primary transition-colors truncate font-mono text-xs">
+							<span className="font-semibold text-foreground group-hover:text-primary transition-colors truncate font-mono text-xs flex items-center gap-1">
 								{info.getValue()}
+								<ChevronRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity text-primary flex-shrink-0" />
 							</span>
 							<span className="text-[11px] text-muted-foreground font-mono truncate">
 								{clientProd} {clientVer}
@@ -220,7 +221,7 @@ export function ConnectionsPage() {
 										? "destructive"
 										: "warning"
 							}
-							className="text-[10px] uppercase font-mono"
+							className="text-[10px] capitalize"
 						>
 							{state}
 						</Badge>
@@ -230,15 +231,15 @@ export function ConnectionsPage() {
 			columnHelper.accessor("ssl", {
 				header: "Security",
 				cell: (info) => (
-					<div className="flex items-center gap-1">
+					<div className="inline-flex items-center gap-1">
 						{info.getValue() ? (
-							<Badge variant="success" className="text-[10px] font-mono py-0">
+							<Badge variant="success" className="text-[10px]">
 								<Lock className="h-2.5 w-2.5 mr-0.5" /> TLS
 							</Badge>
 						) : (
 							<Badge
 								variant="outline"
-								className="text-[10px] font-mono py-0 text-muted-foreground"
+								className="text-[10px] text-muted-foreground"
 							>
 								Plain
 							</Badge>
@@ -278,26 +279,6 @@ export function ConnectionsPage() {
 					</span>
 				),
 			}),
-			columnHelper.display({
-				id: "actions",
-				header: "",
-				cell: (info) => (
-					<Link
-						to="/connections/$name"
-						params={{ name: encodeURIComponent(info.row.original.name) }}
-					>
-						<Button
-							variant="ghost"
-							size="sm"
-							className="h-6 text-[11px] px-2 text-primary hover:bg-primary/10"
-							title="Explore Connection Details"
-						>
-							<Eye className="h-3 w-3 mr-1" />
-							Explore
-						</Button>
-					</Link>
-				),
-			}),
 		],
 		[],
 	);
@@ -322,8 +303,15 @@ export function ConnectionsPage() {
 						</h1>
 					</div>
 					<p className="text-xs text-muted-foreground">
-						Active TCP & AMQP client connections in vhost{" "}
-						<strong className="text-primary font-mono">{selectedVHost}</strong>
+						Active TCP & AMQP client connections{" "}
+						{selectedVHost === "all" ? (
+							"across all virtual hosts"
+						) : (
+							<>
+								in vhost{" "}
+								<strong className="text-primary font-mono">{selectedVHost}</strong>
+							</>
+						)}
 					</p>
 				</div>
 				<div className="flex items-center gap-2">

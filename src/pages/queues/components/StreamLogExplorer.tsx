@@ -7,6 +7,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card/index.tsx";
+import { Dropdown } from "@/components/ui/dropdown/index.tsx";
 import {
 	Table,
 	TableBody,
@@ -305,20 +306,20 @@ export function StreamLogExplorer({
 							</Button>
 						</div>
 
-						<select
+						<Dropdown<number>
 							value={pageSize}
-							onChange={(e) => {
-								const size = Number(e.target.value);
-								setPageSize(size);
-								onFetch(size);
+							onChange={(v) => {
+								setPageSize(v);
+								onFetch(v);
 							}}
-							className="h-7 rounded border border-border bg-background px-2 text-[11px] font-mono focus:outline-none focus:border-cyan-400"
-						>
-							<option value={10}>10 events</option>
-							<option value={25}>25 events</option>
-							<option value={50}>50 events</option>
-							<option value={100}>100 events</option>
-						</select>
+							options={[
+								{ label: "10 events", value: 10 },
+								{ label: "25 events", value: 25 },
+								{ label: "50 events", value: 50 },
+								{ label: "100 events", value: 100 },
+							]}
+							buttonClassName="h-7 px-2 text-[11px] font-mono"
+						/>
 
 						<Button
 							variant="outline"
@@ -338,7 +339,7 @@ export function StreamLogExplorer({
 				{/* Search & Filter Bar */}
 				<div className="pt-2 flex items-center gap-2">
 					<div className="relative flex-1">
-						<Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
+						<Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
 						<input
 							type="text"
 							value={searchFilter}

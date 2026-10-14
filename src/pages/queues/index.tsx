@@ -23,9 +23,12 @@ import {
 import { toast } from "@/components/ui/toast/index.tsx";
 import { Tooltip } from "@/components/ui/tooltip/index.tsx";
 import {
+	useRabbitExchanges,
 	useRabbitMutations,
 	useRabbitQueues,
+	useRabbitShovelPlugin,
 } from "@/hooks/useRabbitMQ/index.ts";
+import { MoveMessagesDialog } from "./components/MoveMessagesDialog.tsx";
 import { isDlqSink, isDlqSource, getDlqTargetExchange } from "./utils/dlqUtils.ts";
 import { useUrlState } from "@/hooks/useUrlState/index.ts";
 import { useVHost } from "@/hooks/useVHost/index.ts";
@@ -36,6 +39,8 @@ import {
 	QUEUE_TYPE_DESCRIPTIONS,
 } from "@/services/rabbitmq/utils.ts";
 import { Link } from "@tanstack/react-router";
+import { useAuth } from "@/hooks/useAuth/index.ts";
+import { useResourcePermissions } from "@/hooks/usePermissions/index.ts";
 import {
 	createColumnHelper,
 	flexRender,
@@ -50,11 +55,12 @@ import {
 	ArrowUpDown,
 	ChevronRight,
 	Eraser,
-	Eye,
 	Layers,
 	Plus,
 	Search,
-	Trash2,
+	Share2,
+	ShieldAlert,
+	Shovel,
 	X,
 } from "lucide-react";
 import * as React from "react";
@@ -63,9 +69,25 @@ const columnHelper = createColumnHelper<Queue>();
 
 export function QueuesPage() {
 	const { selectedVHost, availableVHosts } = useVHost();
+	const { user } = useAuth();
+	const permissions = useResourcePermissions({ vhost: selectedVHost });
+	const {
+		hasVHostAccess,
+		canConfigure,
+		canRead,
+		isAdminWithoutVHostPerms,
+		isLoading: isPermissionsLoading,
+	} = permissions;
+
 	const confirm = useConfirm();
-	const { data: queues = [], isLoading } = useRabbitQueues(selectedVHost);
-	const { createQueue, deleteQueue, purgeQueue } = useRabbitMutations();
+	const {
+		data: queues = [],
+		isLoading,
+		error: queuesError,
+	} = useRabbitQueues(selectedVHost);
+	const { data: isShovelEnabled = false } = useRabbitShovelPlugin();
+	const { createQueue, purgeQueue } = useRabbitMutations();
+	const [shovelingQueue, setShovelingQueue] = React.useState<Queue | null>(null);
 
 	const [urlState, setUrlState] = useUrlState({
 		q: "",
@@ -111,7 +133,11 @@ export function QueuesPage() {
 
 	// Add queue state
 	const [newVHost, setNewVHost] = React.useState(
-		selectedVHost === "all" ? "/" : selectedVHost,
+		selectedVHost === "all"
+			? availableVHosts.some((v) => v.name === "/")
+				? "/"
+				: availableVHosts[0]?.name || "/"
+			: selectedVHost,
 	);
 	const [newName, setNewName] = React.useState("");
 	const [newType, setNewType] = React.useState<"classic" | "quorum" | "stream">(
@@ -123,6 +149,19 @@ export function QueuesPage() {
 	const [newMaxLength, setNewMaxLength] = React.useState("");
 	const [newDlx, setNewDlx] = React.useState("");
 	const [isCreating, setIsCreating] = React.useState(false);
+
+	// Exchanges for Dead Letter Exchange autocompletion
+	const { data: vhostExchanges = [] } = useRabbitExchanges(newVHost);
+	const dlxOptions = React.useMemo(() => {
+		return vhostExchanges
+			.filter((ex) => ex.name && ex.name.trim() !== "")
+			.map((ex) => ({
+				label: ex.name,
+				value: ex.name,
+				subLabel: ex.type,
+				icon: <Share2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />,
+			}));
+	}, [vhostExchanges]);
 
 	const typeOptions = React.useMemo(() => {
 		const types = Array.from(
@@ -271,25 +310,6 @@ export function QueuesPage() {
 		}
 	};
 
-	const handleDeleteQueue = React.useCallback(
-		async (q: Queue) => {
-			if (
-				!(await confirm({
-					title: "Delete Queue?",
-					description: `Are you sure you want to permanently delete queue "${q.name}" in vhost "${q.vhost}"?`,
-					confirmLabel: "Delete Queue",
-				}))
-			)
-				return;
-			try {
-				await deleteQueue.mutateAsync({ vhost: q.vhost, name: q.name });
-			} catch (err: any) {
-				toast.error("Failed to delete queue", err.message || String(err));
-			}
-		},
-		[confirm, deleteQueue],
-	);
-
 	const handlePurgeQueue = React.useCallback(
 		async (q: Queue) => {
 			if (
@@ -316,6 +336,10 @@ export function QueuesPage() {
 		[confirm, purgeQueue],
 	);
 
+	const handleShovelQueue = React.useCallback((q: Queue) => {
+		setShovelingQueue(q);
+	}, []);
+
 	const columns = React.useMemo(
 		() => [
 			columnHelper.accessor("name", {
@@ -334,13 +358,13 @@ export function QueuesPage() {
 							<span className="font-semibold text-foreground group-hover:text-primary transition-colors font-mono text-xs flex items-center gap-1.5 flex-wrap">
 								{info.getValue()}
 								{isDlqSink(q) && (
-									<span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-mono font-medium border border-rose-500/30 text-rose-500 bg-rose-500/10">
+									<span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-mono font-medium leading-none border border-rose-500/30 text-rose-500 bg-rose-500/10">
 										DLQ
 									</span>
 								)}
 								{isDlqSource(q) && (
 									<span
-										className="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-mono font-medium border border-amber-500/30 text-amber-500 bg-amber-500/10"
+										className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-mono font-medium leading-none border border-amber-500/30 text-amber-500 bg-amber-500/10"
 										title={`Configured with dead-letter exchange: ${getDlqTargetExchange(q)}`}
 									>
 										DLX
@@ -363,7 +387,7 @@ export function QueuesPage() {
 						<Tooltip content={QUEUE_TYPE_DESCRIPTIONS[type] ?? type}>
 							<Badge
 								variant="outline"
-								className={`font-mono text-[10px] uppercase cursor-default ${
+								className={`text-[10px] capitalize cursor-default ${
 									type === "quorum"
 										? "border-purple-500/30 text-purple-400 bg-purple-500/10"
 										: type === "stream"
@@ -460,45 +484,36 @@ export function QueuesPage() {
 					</span>
 				),
 			}),
-			columnHelper.accessor("node", {
-				header: "Node",
-				cell: (info) => (
-					<span className="font-mono text-[11px] text-muted-foreground">
-						{info.getValue()}
-					</span>
-				),
-			}),
 			columnHelper.display({
 				id: "actions",
 				header: "",
 				cell: (info) => {
 					const q = info.row.original;
-					const isSystem = q.name.startsWith("amq.") || Boolean((q as any).internal);
 					const isStream = q.type === "stream";
 					return (
 						<div className="flex items-center justify-end gap-1">
-							<Link
-								to="/queues/$vhost/$name"
-								params={{
-									vhost: encodeURIComponent(q.vhost),
-									name: encodeURIComponent(q.name),
-								}}
-							>
-								<Button
-									variant="ghost"
-									size="sm"
-									className="h-6 text-[11px] px-2 text-primary hover:bg-primary/10"
-									title="Explore Queue Details & Messages"
+							{isShovelEnabled && (
+								<span
+									title="Move messages via Shovel"
+									className="inline-flex"
 								>
-									<Eye className="h-3 w-3 mr-1" />
-									Explore
-								</Button>
-							</Link>
+									<Button
+										variant="ghost"
+										size="sm"
+										onClick={() => handleShovelQueue(q)}
+										className="h-6 w-6 p-0 text-primary hover:bg-primary/10"
+									>
+										<Shovel className="h-3 w-3" />
+									</Button>
+								</span>
+							)}
 							<span
 								title={
-									isStream
-										? "Streams cannot be purged"
-										: "Purge Queue Messages"
+									!canRead && !isPermissionsLoading
+										? "Purge disabled: Read permission required on this queue"
+										: isStream
+											? "Streams cannot be purged"
+											: "Purge Queue Messages"
 								}
 								className="inline-flex"
 							>
@@ -506,28 +521,10 @@ export function QueuesPage() {
 									variant="ghost"
 									size="sm"
 									onClick={() => handlePurgeQueue(q)}
-									disabled={isStream}
-									className="h-6 w-6 p-0 text-amber-500 hover:bg-amber-500/10"
+									disabled={isStream || (!canRead && !isPermissionsLoading)}
+									className="h-6 w-6 p-0 text-amber-500 hover:bg-amber-500/10 disabled:opacity-40"
 								>
 									<Eraser className="h-3 w-3" />
-								</Button>
-							</span>
-							<span
-								title={
-									isSystem
-										? "System queues cannot be deleted"
-										: "Delete Queue"
-								}
-								className="inline-flex"
-							>
-								<Button
-									variant="ghost"
-									size="sm"
-									onClick={() => handleDeleteQueue(q)}
-									disabled={isSystem}
-									className="h-6 w-6 p-0 text-destructive hover:bg-destructive/10"
-								>
-									<Trash2 className="h-3 w-3" />
 								</Button>
 							</span>
 						</div>
@@ -535,7 +532,7 @@ export function QueuesPage() {
 				},
 			}),
 		],
-		[handlePurgeQueue, handleDeleteQueue],
+		[handlePurgeQueue, handleShovelQueue, isShovelEnabled, canRead, isPermissionsLoading],
 	);
 
 	const table = useReactTable({
@@ -558,21 +555,73 @@ export function QueuesPage() {
 						</h1>
 					</div>
 					<p className="text-xs text-muted-foreground">
-						Classic queues, Quorum replicated sets, and RabbitMQ Streams in
-						vhost{" "}
-						<strong className="text-primary font-mono">{selectedVHost}</strong>
+						Classic queues, Quorum replicated sets, and RabbitMQ Streams{" "}
+						{selectedVHost === "all" ? (
+							"across all virtual hosts"
+						) : (
+							<>
+								in vhost{" "}
+								<strong className="text-primary font-mono">{selectedVHost}</strong>
+							</>
+						)}
 					</p>
 				</div>
 				<div className="flex items-center gap-2">
-					<Button
-						size="sm"
-						onClick={() => setIsAddModalOpen(true)}
-						className="text-xs"
-					>
-						<Plus className="h-4 w-4 mr-1" /> Add Queue
-					</Button>
+					{canConfigure ? (
+						<Button
+							size="sm"
+							onClick={() => {
+								if (
+									newVHost === "all" ||
+									!availableVHosts.some((v) => v.name === newVHost)
+								) {
+									setNewVHost(
+										availableVHosts.some((v) => v.name === "/")
+											? "/"
+											: availableVHosts[0]?.name || "/",
+									);
+								}
+								setIsAddModalOpen(true);
+							}}
+							className="text-xs"
+						>
+							<Plus className="h-4 w-4 mr-1" /> Add Queue
+						</Button>
+					) : (
+						<Tooltip content="Add Queue disabled: Configure permission required on this virtual host">
+							<Button
+								size="sm"
+								disabled
+								className="text-xs opacity-50 cursor-not-allowed"
+							>
+								<Plus className="h-4 w-4 mr-1" /> Add Queue
+							</Button>
+						</Tooltip>
+					)}
 				</div>
 			</div>
+
+			{/* Limited VHost Access Banner */}
+			{selectedVHost !== "all" && (!hasVHostAccess || isAdminWithoutVHostPerms) && !isPermissionsLoading && (
+				<div className="p-3.5 rounded-xl border border-amber-500/30 bg-amber-500/10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs text-amber-700 dark:text-amber-400">
+					<div className="flex items-start sm:items-center gap-2.5">
+						<ShieldAlert className="h-4 w-4 shrink-0 text-amber-500 mt-0.5 sm:mt-0" />
+						<div>
+							<span className="font-semibold">Limited Access Notice:</span> You do not have permissions granted on virtual host{" "}
+							<span className="font-mono font-bold text-foreground">{selectedVHost}</span>. Queue operations (declaring, reading, purging) are restricted by RabbitMQ.
+						</div>
+					</div>
+					{user?.tags?.includes("administrator") && (
+						<Link
+							to="/admin/$tab"
+							params={{ tab: "vhosts" }}
+							className="inline-flex items-center gap-1 font-medium underline hover:text-amber-800 dark:hover:text-amber-300 shrink-0 text-xs"
+						>
+							Manage Permissions
+						</Link>
+					)}
+				</div>
+			)}
 
 			{/* Main Table Card */}
 			<Card>
@@ -682,7 +731,30 @@ export function QueuesPage() {
 							))}
 						</TableHeader>
 						<TableBody>
-							{table.getRowModel().rows.length ? (
+							{queuesError ? (
+								<TableRow>
+									<TableCell
+										colSpan={columns.length}
+										className="h-32 text-center text-muted-foreground text-xs"
+									>
+										<div className="flex flex-col items-center justify-center gap-1.5 py-4">
+											<div className="p-2 rounded-full bg-amber-500/10 text-amber-500 mb-1 border border-amber-500/20">
+												<ShieldAlert className="h-5 w-5" />
+											</div>
+											<span className="font-semibold text-foreground">
+												{(queuesError as any)?.status === 401 || (queuesError as any)?.status === 403
+													? "Access Denied"
+													: "Failed to load queues"}
+											</span>
+											<span className="text-muted-foreground max-w-sm">
+												{(queuesError as any)?.status === 401 || (queuesError as any)?.status === 403
+													? `You do not have permission to view queues in virtual host "${selectedVHost}".`
+													: queuesError.message || "An error occurred while loading queues."}
+											</span>
+										</div>
+									</TableCell>
+								</TableRow>
+							) : table.getRowModel().rows.length ? (
 								table.getRowModel().rows.map((row) => (
 									<TableRow key={row.id}>
 										{row.getVisibleCells().map((cell) => (
@@ -850,12 +922,19 @@ export function QueuesPage() {
 									<label className="text-xs text-muted-foreground">
 										Dead Letter Exchange
 									</label>
-									<input
-										type="text"
+									<Dropdown<string>
 										value={newDlx}
-										onChange={(e) => setNewDlx(e.target.value)}
+										onChange={(val) => setNewDlx(val)}
+										options={dlxOptions}
+										searchable
+										clearable
+										allowCustom
+										searchPlaceholder="Filter exchanges..."
 										placeholder="e.g. dlx.exchange"
-										className="h-9 w-full rounded-md border border-border bg-muted/20 px-3 text-sm font-mono"
+										align="left"
+										className="w-full"
+										buttonClassName="h-9 w-full justify-between px-3 text-sm font-mono bg-muted/20 border-border"
+										contentClassName="w-full"
 									/>
 								</div>
 							</div>
@@ -863,7 +942,7 @@ export function QueuesPage() {
 							<div className="flex justify-end gap-2 pt-3 border-t border-border">
 								<Button
 									type="button"
-									variant="outline"
+									variant="secondary"
 									size="sm"
 									onClick={() => setIsAddModalOpen(false)}
 								>
@@ -880,6 +959,17 @@ export function QueuesPage() {
 						</form>
 					</div>
 				</div>
+			)}
+
+			{shovelingQueue && (
+				<MoveMessagesDialog
+					isOpen={Boolean(shovelingQueue)}
+					onClose={() => setShovelingQueue(null)}
+					vhost={shovelingQueue.vhost}
+					sourceQueue={shovelingQueue.name}
+					totalMessages={shovelingQueue.messages ?? 0}
+					queueType={shovelingQueue.type}
+				/>
 			)}
 		</div>
 	);

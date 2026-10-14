@@ -83,7 +83,7 @@ export function ConnectionDetailPage() {
 		},
 		[navigate, params.name],
 	);
-	const [closeReason, setCloseReason] = React.useState("Closed via Thumber");
+	const [closeReason, setCloseReason] = React.useState("Closed via Thumper");
 	const [isClosing, setIsClosing] = React.useState(false);
 	const [showCloseConfirm, setShowCloseConfirm] = React.useState(false);
 
@@ -368,34 +368,6 @@ export function ConnectionDetailPage() {
 									</div>
 								</div>
 							</div>
-
-							<div className="mt-5 p-3 rounded-lg border border-destructive/30 bg-destructive/5 space-y-2.5">
-								<div className="flex items-center gap-2 text-destructive font-semibold text-xs">
-									<AlertTriangle className="h-4 w-4 shrink-0" />
-									<span>Force Close Client Connection</span>
-								</div>
-								<p className="text-[11px] text-muted-foreground">
-									Terminates the AMQP TCP socket immediately and closes all{" "}
-									{connection?.channels ?? 0} multiplexed channels.
-								</p>
-								<div className="flex gap-2">
-									<input
-										type="text"
-										value={closeReason}
-										onChange={(e) => setCloseReason(e.target.value)}
-										placeholder="Reason for closing connection"
-										className="h-8 flex-1 rounded border border-border bg-background px-2.5 text-xs text-foreground font-mono"
-									/>
-									<Button
-										variant="destructive"
-										size="sm"
-										onClick={() => setShowCloseConfirm(true)}
-										className="h-8 text-xs"
-									>
-										Force Close
-									</Button>
-								</div>
-							</div>
 						</CardContent>
 					</Card>
 				)}
@@ -520,14 +492,29 @@ export function ConnectionDetailPage() {
 							<span>Force Close Connection?</span>
 						</div>
 						<p className="text-xs text-muted-foreground">
-							This will immediately terminate the socket for{" "}
+							This will immediately terminate the AMQP TCP socket for{" "}
 							<strong className="font-mono text-foreground">{name}</strong> and
-							close all its channels. Reason:{" "}
-							<span className="font-mono text-foreground">{closeReason}</span>
+							close all its channels
+							{connection?.channels !== undefined
+								? ` (${connection.channels} multiplexed)`
+								: ""}
+							.
 						</p>
-						<div className="flex justify-end gap-2">
+						<div className="space-y-1.5">
+							<label className="text-[11px] font-medium text-muted-foreground">
+								Close Reason
+							</label>
+							<input
+								type="text"
+								value={closeReason}
+								onChange={(e) => setCloseReason(e.target.value)}
+								placeholder="Reason for closing connection"
+								className="h-8 w-full rounded border border-border bg-background px-2.5 text-xs text-foreground font-mono focus:outline-hidden focus:ring-1 focus:ring-ring"
+							/>
+						</div>
+						<div className="flex justify-end gap-2 pt-1">
 							<Button
-								variant="outline"
+								variant="secondary"
 								size="sm"
 								onClick={() => setShowCloseConfirm(false)}
 							>

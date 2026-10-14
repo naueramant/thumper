@@ -11,6 +11,8 @@ const queryClient = new QueryClient({
 	defaultOptions: {
 		queries: {
 			staleTime: 1000 * 5,
+			// Ensure polling intervals continue even when the tab/window is not in focus
+			refetchIntervalInBackground: true,
 			// Disabled to prevent all active queries firing simultaneously when the
 			// user switches browser tabs back to the app, which caused fetch storms.
 			refetchOnWindowFocus: false,

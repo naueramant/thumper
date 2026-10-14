@@ -167,7 +167,7 @@ function MoveMessagesForm({
 	};
 
 	return (
-		<Card className="w-full max-w-lg shadow-xl border-border bg-card">
+		<Card className="w-full max-w-xl shadow-xl border-border bg-card">
 			<CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-border">
 				<div>
 					<CardTitle className="text-base font-semibold flex items-center gap-2">
@@ -196,7 +196,7 @@ function MoveMessagesForm({
 							<span className="text-[10px] uppercase font-mono text-muted-foreground font-semibold">
 								Source Queue
 							</span>
-							<p className="font-mono text-xs font-semibold truncate text-foreground">
+							<p className="font-mono text-xs font-semibold truncate text-foreground" title={sourceQueue}>
 								{sourceQueue}
 							</p>
 							<span className="text-[10px] text-muted-foreground">
@@ -208,7 +208,7 @@ function MoveMessagesForm({
 							<span className="text-[10px] uppercase font-mono text-muted-foreground font-semibold">
 								Destination Queue
 							</span>
-							<p className="font-mono text-xs font-semibold truncate text-primary">
+							<p className="font-mono text-xs font-semibold truncate text-primary" title={destQueue || undefined}>
 								{destQueue || "Enter target queue..."}
 							</p>
 							<span className="text-[10px] text-muted-foreground">
@@ -218,9 +218,9 @@ function MoveMessagesForm({
 					</div>
 
 					{/* Single unified Destination Queue selector with autocomplete */}
-					<div className="space-y-1.5" ref={dropdownRef}>
+					<div className="space-y-2" ref={dropdownRef}>
 						<div className="flex items-center justify-between">
-							<label className="font-medium text-foreground">
+							<label className="block font-medium text-foreground">
 								Target Destination Queue{" "}
 								<span className="text-destructive">*</span>
 							</label>
@@ -339,8 +339,8 @@ function MoveMessagesForm({
 					</div>
 
 					{/* Move Mode */}
-					<div className="space-y-1.5">
-						<label className="font-medium text-foreground">
+					<div className="space-y-2">
+						<label className="block font-medium text-foreground">
 							Transfer Scope
 						</label>
 						<div className="grid grid-cols-3 gap-2">
@@ -387,8 +387,8 @@ function MoveMessagesForm({
 
 					{/* Specific count input */}
 					{moveMode === "count" && (
-						<div className="space-y-1.5 animate-in fade-in duration-150">
-							<label className="font-medium text-foreground">
+						<div className="space-y-2 animate-in fade-in duration-150">
+							<label className="block font-medium text-foreground">
 								Number of messages to transfer
 							</label>
 							<input
@@ -436,7 +436,7 @@ function MoveMessagesForm({
 				<CardFooter className="flex justify-end gap-2 border-t border-border pt-3">
 					<Button
 						type="button"
-						variant="outline"
+						variant="secondary"
 						size="sm"
 						onClick={onClose}
 						disabled={isSubmitting}
