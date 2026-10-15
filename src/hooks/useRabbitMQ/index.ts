@@ -89,10 +89,10 @@ export interface ShovelItem {
 }
 
 const DEFAULT_OVERVIEW_OPTIONS: OverviewQueryOptions = {
-	lengths_age: 3600,
-	lengths_incr: 60,
-	msg_rates_age: 3600,
-	msg_rates_incr: 60,
+	lengths_age: 600,
+	lengths_incr: 5,
+	msg_rates_age: 600,
+	msg_rates_incr: 5,
 };
 
 export function useRabbitOverview(
@@ -156,10 +156,10 @@ export function useRabbitQueues(vhost?: string) {
 }
 
 const DEFAULT_QUEUE_OPTIONS: QueueQueryOptions = {
-	lengths_age: 3600,
-	lengths_incr: 60,
-	msg_rates_age: 3600,
-	msg_rates_incr: 60,
+	lengths_age: 600,
+	lengths_incr: 5,
+	msg_rates_age: 600,
+	msg_rates_incr: 5,
 };
 
 export function useRabbitQueueDetail(
@@ -218,8 +218,8 @@ export function useRabbitExchanges(vhost?: string) {
 }
 
 const DEFAULT_EXCHANGE_OPTIONS: ExchangeQueryOptions = {
-	msg_rates_age: 3600,
-	msg_rates_incr: 60,
+	msg_rates_age: 600,
+	msg_rates_incr: 5,
 };
 
 export function useRabbitExchangeDetail(

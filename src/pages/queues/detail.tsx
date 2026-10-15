@@ -25,6 +25,7 @@ import {
 	MessageRatesChart,
 } from "@/components/HistoricalCharts/index.ts";
 import {
+	DEFAULT_CHART_RANGE,
 	QUEUE_CHART_RANGES,
 	type ChartRangeOption,
 } from "@/utilities/chart/telemetry.ts";
@@ -112,7 +113,7 @@ export function QueueDetailPage() {
 	const queueName = params.name ? decodeURIComponent(params.name) : "";
 
 	const [chartRange, setChartRange] = React.useState<ChartRangeOption>(
-		QUEUE_CHART_RANGES[2], // 1 hour default (RabbitMQ basic retention max is 1h)
+		DEFAULT_CHART_RANGE, // 10 minutes default
 	);
 
 	const queryOptions = React.useMemo(

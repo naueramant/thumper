@@ -1,4 +1,3 @@
-import { toast } from "@/components/ui/toast/store.ts";
 import { UNAUTHORIZED_EVENT } from "@/services/rabbitmq/client.ts";
 import { base64Encode } from "@/services/rabbitmq/utils.ts";
 import { useNavigate, useRouter } from "@tanstack/react-router";
@@ -66,12 +65,19 @@ export function useSessionExpiredRedirect() {
 	const router = useRouter();
 
 	useEffect(() => {
+		let isExpiring = false;
+
 		async function handleUnauthorized(e: Event) {
+			// Avoid redirect loop if already on /login
+			if (router.state.location.pathname === "/login") {
+				isExpiring = false;
+				return;
+			}
+
+			if (isExpiring) return;
+
 			// No stored session (e.g. login form testing bad credentials)
 			if (!getStoredAuth()) return;
-
-			// Avoid redirect loop if already on /login
-			if (router.state.location.pathname === "/login") return;
 
 			const customEvent = e as CustomEvent<{
 				endpoint?: string;
@@ -95,8 +101,9 @@ export function useSessionExpiredRedirect() {
 		}
 
 		function expire() {
+			if (isExpiring || !getStoredAuth()) return;
+			isExpiring = true;
 			clearSession();
-			toast.error("Session expired", "Please sign in again to continue.");
 			const { pathname, searchStr } = router.state.location;
 			navigate({
 				to: "/login",

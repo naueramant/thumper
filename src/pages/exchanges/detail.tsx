@@ -23,6 +23,7 @@ import { toast } from "@/components/ui/toast/index.tsx";
 import { Tooltip } from "@/components/ui/tooltip/index.tsx";
 import { MessageRatesChart } from "@/components/HistoricalCharts/index.ts";
 import {
+	DEFAULT_CHART_RANGE,
 	QUEUE_CHART_RANGES,
 	type ChartRangeOption,
 } from "@/utilities/chart/telemetry.ts";
@@ -82,7 +83,7 @@ export function ExchangeDetailPage() {
 	const exchangeName = rawName === "(default)" ? "" : rawName;
 
 	const [chartRange, setChartRange] = React.useState<ChartRangeOption>(
-		QUEUE_CHART_RANGES[2], // 1 hour default
+		DEFAULT_CHART_RANGE, // 10 minutes default
 	);
 
 	const queryOptions = React.useMemo(

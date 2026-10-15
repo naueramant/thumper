@@ -53,6 +53,7 @@ import {
 	MessageRatesChart,
 } from "@/components/HistoricalCharts/index.ts";
 import {
+	DEFAULT_CHART_RANGE,
 	OVERVIEW_CHART_RANGES,
 	type ChartRangeOption,
 } from "@/utilities/chart/telemetry.ts";
@@ -61,7 +62,7 @@ const nodeColumnHelper = createColumnHelper<RabbitNode>();
 
 export function OverviewPage() {
 	const [chartRange, setChartRange] = React.useState<ChartRangeOption>(
-		OVERVIEW_CHART_RANGES[2], // 1 hour default
+		DEFAULT_CHART_RANGE, // 10 minutes default
 	);
 
 	const queryOptions = React.useMemo(

@@ -34,11 +34,11 @@ export const QUEUE_CHART_RANGES: ChartRangeOption[] = [
 ];
 
 export const DEFAULT_CHART_RANGE: ChartRangeOption = {
-	label: "Last hour",
-	shortLabel: "1h",
-	value: 3600,
-	age: 3600,
-	incr: 60,
+	label: "Last ten minutes",
+	shortLabel: "10m",
+	value: 600,
+	age: 600,
+	incr: 5,
 };
 
 export interface QueueLengthPoint {
@@ -113,7 +113,7 @@ export function buildQueueLengthChartData(
 		  }
 		| null
 		| undefined,
-	rangeSeconds = 3600,
+	rangeSeconds = 600,
 ): QueueLengthPoint[] {
 	if (!source) return [];
 
@@ -211,7 +211,7 @@ function extractRateMap(detail?: RateDetail): Map<number, number> {
  */
 export function buildMessageRatesChartData(
 	stats: MessageStats | null | undefined,
-	rangeSeconds = 3600,
+	rangeSeconds = 600,
 ): MessageRatesPoint[] {
 	if (!stats) return [];
 
