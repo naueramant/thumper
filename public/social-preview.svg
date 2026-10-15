@@ -1,0 +1,249 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" width="1280" height="640">
+  <defs>
+    <!-- Background Canvas Gradient -->
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#14151b"/>
+      <stop offset="50%" stop-color="#101116"/>
+      <stop offset="100%" stop-color="#0b0c0f"/>
+    </linearGradient>
+
+    <!-- Ambient Glowing Orbs -->
+    <radialGradient id="orangeGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ea6a28" stop-opacity="0.28"/>
+      <stop offset="50%" stop-color="#ea6a28" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#101116" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="blueGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.16"/>
+      <stop offset="60%" stop-color="#3b82f6" stop-opacity="0.04"/>
+      <stop offset="100%" stop-color="#101116" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Card Backgrounds -->
+    <linearGradient id="cardBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1c1e27" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#13141b" stop-opacity="0.95"/>
+    </linearGradient>
+    <linearGradient id="miniCardBg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#242633" stop-opacity="0.7"/>
+      <stop offset="100%" stop-color="#191a24" stop-opacity="0.7"/>
+    </linearGradient>
+
+    <!-- Chart Fill Gradients -->
+    <linearGradient id="chartGradientOrange" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ea6a28" stop-opacity="0.45"/>
+      <stop offset="60%" stop-color="#ea6a28" stop-opacity="0.1"/>
+      <stop offset="100%" stop-color="#ea6a28" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="chartGradientCyan" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#06b6d4" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Drop Shadows -->
+    <filter id="cardShadow" x="-10%" y="-10%" width="125%" height="130%">
+      <feDropShadow dx="0" dy="20" stdDeviation="30" flood-color="#000000" flood-opacity="0.65"/>
+    </filter>
+  </defs>
+
+  <style>
+    .font-sans { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    .font-mono { font-family: 'JetBrains Mono', 'SF Mono', Menlo, Monaco, Consolas, monospace; }
+  </style>
+
+  <!-- Background Base -->
+  <rect width="1280" height="640" fill="url(#bgGradient)"/>
+  <rect width="1278" height="638" x="1" y="1" fill="none" stroke="#252733" stroke-width="1.5"/>
+
+  <!-- Matrix Grid Dots -->
+  <g fill="#ea6a28" fill-opacity="0.07">
+    <circle cx="80" cy="80" r="1.5"/><circle cx="160" cy="80" r="1.5"/><circle cx="240" cy="80" r="1.5"/><circle cx="320" cy="80" r="1.5"/><circle cx="400" cy="80" r="1.5"/><circle cx="480" cy="80" r="1.5"/><circle cx="560" cy="80" r="1.5"/><circle cx="640" cy="80" r="1.5"/><circle cx="720" cy="80" r="1.5"/><circle cx="800" cy="80" r="1.5"/><circle cx="880" cy="80" r="1.5"/><circle cx="960" cy="80" r="1.5"/><circle cx="1040" cy="80" r="1.5"/><circle cx="1120" cy="80" r="1.5"/><circle cx="1200" cy="80" r="1.5"/>
+    <circle cx="80" cy="160" r="1.5"/><circle cx="160" cy="160" r="1.5"/><circle cx="240" cy="160" r="1.5"/><circle cx="320" cy="160" r="1.5"/><circle cx="400" cy="160" r="1.5"/><circle cx="480" cy="160" r="1.5"/><circle cx="560" cy="160" r="1.5"/><circle cx="640" cy="160" r="1.5"/><circle cx="720" cy="160" r="1.5"/><circle cx="800" cy="160" r="1.5"/><circle cx="880" cy="160" r="1.5"/><circle cx="960" cy="160" r="1.5"/><circle cx="1040" cy="160" r="1.5"/><circle cx="1120" cy="160" r="1.5"/><circle cx="1200" cy="160" r="1.5"/>
+    <circle cx="80" cy="240" r="1.5"/><circle cx="160" cy="240" r="1.5"/><circle cx="240" cy="240" r="1.5"/><circle cx="320" cy="240" r="1.5"/><circle cx="400" cy="240" r="1.5"/><circle cx="480" cy="240" r="1.5"/><circle cx="560" cy="240" r="1.5"/><circle cx="640" cy="240" r="1.5"/><circle cx="720" cy="240" r="1.5"/><circle cx="800" cy="240" r="1.5"/><circle cx="880" cy="240" r="1.5"/><circle cx="960" cy="240" r="1.5"/><circle cx="1040" cy="240" r="1.5"/><circle cx="1120" cy="240" r="1.5"/><circle cx="1200" cy="240" r="1.5"/>
+    <circle cx="80" cy="320" r="1.5"/><circle cx="160" cy="320" r="1.5"/><circle cx="240" cy="320" r="1.5"/><circle cx="320" cy="320" r="1.5"/><circle cx="400" cy="320" r="1.5"/><circle cx="480" cy="320" r="1.5"/><circle cx="560" cy="320" r="1.5"/><circle cx="640" cy="320" r="1.5"/><circle cx="720" cy="320" r="1.5"/><circle cx="800" cy="320" r="1.5"/><circle cx="880" cy="320" r="1.5"/><circle cx="960" cy="320" r="1.5"/><circle cx="1040" cy="320" r="1.5"/><circle cx="1120" cy="320" r="1.5"/><circle cx="1200" cy="320" r="1.5"/>
+    <circle cx="80" cy="400" r="1.5"/><circle cx="160" cy="400" r="1.5"/><circle cx="240" cy="400" r="1.5"/><circle cx="320" cy="400" r="1.5"/><circle cx="400" cy="400" r="1.5"/><circle cx="480" cy="400" r="1.5"/><circle cx="560" cy="400" r="1.5"/><circle cx="640" cy="400" r="1.5"/><circle cx="720" cy="400" r="1.5"/><circle cx="800" cy="400" r="1.5"/><circle cx="880" cy="400" r="1.5"/><circle cx="960" cy="400" r="1.5"/><circle cx="1040" cy="400" r="1.5"/><circle cx="1120" cy="400" r="1.5"/><circle cx="1200" cy="400" r="1.5"/>
+    <circle cx="80" cy="480" r="1.5"/><circle cx="160" cy="480" r="1.5"/><circle cx="240" cy="480" r="1.5"/><circle cx="320" cy="480" r="1.5"/><circle cx="400" cy="480" r="1.5"/><circle cx="480" cy="480" r="1.5"/><circle cx="560" cy="480" r="1.5"/><circle cx="640" cy="480" r="1.5"/><circle cx="720" cy="480" r="1.5"/><circle cx="800" cy="480" r="1.5"/><circle cx="880" cy="480" r="1.5"/><circle cx="960" cy="480" r="1.5"/><circle cx="1040" cy="480" r="1.5"/><circle cx="1120" cy="480" r="1.5"/><circle cx="1200" cy="480" r="1.5"/>
+    <circle cx="80" cy="560" r="1.5"/><circle cx="160" cy="560" r="1.5"/><circle cx="240" cy="560" r="1.5"/><circle cx="320" cy="560" r="1.5"/><circle cx="400" cy="560" r="1.5"/><circle cx="480" cy="560" r="1.5"/><circle cx="560" cy="560" r="1.5"/><circle cx="640" cy="560" r="1.5"/><circle cx="720" cy="560" r="1.5"/><circle cx="800" cy="560" r="1.5"/><circle cx="880" cy="560" r="1.5"/><circle cx="960" cy="560" r="1.5"/><circle cx="1040" cy="560" r="1.5"/><circle cx="1120" cy="560" r="1.5"/><circle cx="1200" cy="560" r="1.5"/>
+  </g>
+
+  <!-- Ambient Glow Behind Right Showcase Card -->
+  <circle cx="950" cy="320" r="320" fill="url(#orangeGlow)"/>
+  <circle cx="640" cy="220" r="260" fill="url(#blueGlow)"/>
+
+  <!-- ============================================================ -->
+  <!-- LEFT COLUMN: Brand Identity & Key Value Propositions         -->
+  <!-- ============================================================ -->
+  <g transform="translate(84, 112)">
+    <!-- Header: Icon & Category Chip -->
+    <g transform="translate(0, 0)">
+      <!-- Orange App Icon (Activity heartbeat) -->
+      <rect width="48" height="48" rx="14" fill="#ea6a28"/>
+      <path d="M 13 24 L 19 24 L 22 14 L 26 34 L 29 24 L 35 24" fill="none" stroke="#ffffff" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/>
+
+      <!-- Category Pill -->
+      <g transform="translate(62, 9)">
+        <rect width="206" height="32" rx="16" fill="#ea6a28" fill-opacity="0.12" stroke="#ea6a28" stroke-opacity="0.35"/>
+        <circle cx="17" cy="16" r="4" fill="#ea6a28"/>
+        <text x="30" y="20.5" class="font-mono" font-size="12" font-weight="700" fill="#ea6a28" letter-spacing="0.5">RABBITMQ CONSOLE</text>
+      </g>
+    </g>
+
+    <!-- Main Title Heading -->
+    <text x="0" y="122" class="font-sans" font-weight="800" font-size="74" fill="#ffffff" letter-spacing="-2.2">thumper<tspan fill="#ea6a28">.</tspan></text>
+
+    <!-- Tagline & Description -->
+    <text x="0" y="172" class="font-sans" font-weight="600" font-size="22" fill="#f4f4f5">A modern management console for RabbitMQ.</text>
+    <text x="0" y="206" class="font-sans" font-weight="400" font-size="16" fill="#a1a1aa">Built directly on top of the RabbitMQ Management HTTP API.</text>
+
+    <!-- Open Source & Architecture Badges -->
+    <g transform="translate(0, 252)">
+      <!-- Badge 1: Open Source -->
+      <g transform="translate(0, 0)">
+        <rect width="134" height="36" rx="8" fill="#1b1d26" stroke="#2d303f" stroke-width="1.2"/>
+        <circle cx="18" cy="18" r="4" fill="#22c55e"/>
+        <text x="32" y="22.5" class="font-mono" font-size="12" font-weight="600" fill="#d4d4d8">Open Source</text>
+      </g>
+
+      <!-- Badge 2: Self-Hosted -->
+      <g transform="translate(146, 0)">
+        <rect width="130" height="36" rx="8" fill="#1b1d26" stroke="#2d303f" stroke-width="1.2"/>
+        <circle cx="18" cy="18" r="4" fill="#06b6d4"/>
+        <text x="32" y="22.5" class="font-mono" font-size="12" font-weight="600" fill="#d4d4d8">Self-Hosted</text>
+      </g>
+
+      <!-- Badge 3: Zero Backend -->
+      <g transform="translate(288, 0)">
+        <rect width="144" height="36" rx="8" fill="#1b1d26" stroke="#2d303f" stroke-width="1.2"/>
+        <circle cx="18" cy="18" r="4" fill="#ea6a28"/>
+        <text x="32" y="22.5" class="font-mono" font-size="12" font-weight="600" fill="#d4d4d8">Zero Backend</text>
+      </g>
+    </g>
+
+    <!-- Bottom Meta Note -->
+    <g transform="translate(0, 360)">
+      <text x="0" y="0" class="font-mono" font-size="12.5" font-weight="500" fill="#71717a">Free &amp; Open Source under AGPL-3.0 • React 19 • Vite</text>
+    </g>
+  </g>
+
+  <!-- ============================================================ -->
+  <!-- RIGHT COLUMN: Detailed Floating Dashboard Window Preview     -->
+  <!-- ============================================================ -->
+  <g transform="translate(620, 80)">
+    <!-- Main Floating Window Card -->
+    <rect width="576" height="476" rx="16" fill="url(#cardBg)" stroke="#2b2d3a" stroke-width="1.2" filter="url(#cardShadow)"/>
+
+    <!-- Window Title Bar -->
+    <path d="M 0 16 Q 0 0 16 0 L 560 0 Q 576 0 576 16 L 576 46 L 0 46 Z" fill="#181921"/>
+    <line x1="0" y1="46" x2="576" y2="46" stroke="#272935" stroke-width="1"/>
+
+    <!-- macOS Window Action Dots -->
+    <circle cx="22" cy="23" r="5.5" fill="#ef4444" fill-opacity="0.9"/>
+    <circle cx="40" cy="23" r="5.5" fill="#eab308" fill-opacity="0.9"/>
+    <circle cx="58" cy="23" r="5.5" fill="#22c55e" fill-opacity="0.9"/>
+
+    <!-- Window Context Title -->
+    <text x="86" y="27" class="font-mono" font-size="11.5" font-weight="500" fill="#848590">rabbit@prod-cluster-01 • RabbitMQ 4.3.6</text>
+
+    <!-- Cluster Healthy Chip -->
+    <g transform="translate(468, 13)">
+      <rect width="90" height="22" rx="11" fill="#22c55e" fill-opacity="0.12" stroke="#22c55e" stroke-opacity="0.3"/>
+      <circle cx="12" cy="11" r="3" fill="#22c55e"/>
+      <text x="21" y="15" class="font-mono" font-size="10" font-weight="700" fill="#22c55e">HEALTHY</text>
+    </g>
+
+    <!-- Window Interior: 2 Top KPI Cards -->
+    <g transform="translate(24, 62)">
+      <!-- KPI 1: Queued Messages -->
+      <g transform="translate(0, 0)">
+        <rect width="254" height="74" rx="10" fill="url(#miniCardBg)" stroke="#2d303f" stroke-width="1"/>
+        <text x="16" y="26" class="font-mono" font-size="10" font-weight="600" fill="#9ca3af" letter-spacing="0.5">QUEUED MESSAGES</text>
+        <text x="16" y="56" class="font-mono" font-size="22" font-weight="800" fill="#ffffff">10,672</text>
+        <text x="122" y="55" class="font-mono" font-size="11.5" font-weight="600" fill="#ea6a28">9 in-flight</text>
+      </g>
+
+      <!-- KPI 2: Publish Velocity -->
+      <g transform="translate(274, 0)">
+        <rect width="254" height="74" rx="10" fill="url(#miniCardBg)" stroke="#2d303f" stroke-width="1"/>
+        <text x="16" y="26" class="font-mono" font-size="10" font-weight="600" fill="#9ca3af" letter-spacing="0.5">PUBLISH VELOCITY</text>
+        <text x="16" y="56" class="font-mono" font-size="22" font-weight="800" fill="#ffffff">81.0 <tspan font-size="14" font-weight="500" fill="#9ca3af">/s</tspan></text>
+        <rect x="170" y="38" width="68" height="20" rx="10" fill="#22c55e" fill-opacity="0.15"/>
+        <text x="183" y="52" class="font-mono" font-size="10" font-weight="700" fill="#22c55e">Normal</text>
+      </g>
+    </g>
+
+    <!-- Window Interior: Telemetry Real-Time Wave Chart -->
+    <g transform="translate(24, 152)">
+      <rect width="528" height="170" rx="10" fill="#15161e" stroke="#252735" stroke-width="1"/>
+
+      <!-- Grid lines -->
+      <line x1="18" y1="55" x2="510" y2="55" stroke="#222430" stroke-width="1" stroke-dasharray="3,3"/>
+      <line x1="18" y1="105" x2="510" y2="105" stroke="#222430" stroke-width="1" stroke-dasharray="3,3"/>
+
+      <!-- Rate 2: Delivery Area (Cyan) -->
+      <path d="M 18 145 Q 90 140, 180 115 T 320 95 T 440 102 T 510 85 L 510 162 L 18 162 Z" fill="url(#chartGradientCyan)"/>
+      <path d="M 18 145 Q 90 140, 180 115 T 320 95 T 440 102 T 510 85" fill="none" stroke="#06b6d4" stroke-width="2.2" stroke-linecap="round"/>
+
+      <!-- Rate 1: Publish Area (Orange) -->
+      <path d="M 18 152 Q 100 148, 190 95 T 320 72 T 440 78 T 510 60 L 510 162 L 18 162 Z" fill="url(#chartGradientOrange)"/>
+      <path d="M 18 152 Q 100 148, 190 95 T 320 72 T 440 78 T 510 60" fill="none" stroke="#ea6a28" stroke-width="2.7" stroke-linecap="round"/>
+
+      <!-- Glowing Head Pulse Dot on leading edge -->
+      <circle cx="510" cy="60" r="5.5" fill="#ea6a28"/>
+      <circle cx="510" cy="60" r="10.5" fill="#ea6a28" fill-opacity="0.25"/>
+
+      <!-- Legend Chip Overlays -->
+      <g transform="translate(18, 14)">
+        <!-- Publish Chip -->
+        <g transform="translate(0, 0)">
+          <rect width="118" height="24" rx="5" fill="#1c1e28" stroke="#2a2d3c" stroke-width="0.8"/>
+          <circle cx="12" cy="12" r="4" fill="#ea6a28"/>
+          <text x="23" y="16.5" class="font-mono" font-size="10.5" font-weight="600" fill="#ea6a28">Publish 81.0/s</text>
+        </g>
+
+        <!-- Deliver Chip -->
+        <g transform="translate(128, 0)">
+          <rect width="118" height="24" rx="5" fill="#1c1e28" stroke="#2a2d3c" stroke-width="0.8"/>
+          <circle cx="12" cy="12" r="4" fill="#06b6d4"/>
+          <text x="23" y="16.5" class="font-mono" font-size="10.5" font-weight="600" fill="#06b6d4">Deliver 77.6/s</text>
+        </g>
+      </g>
+    </g>
+
+    <!-- Window Interior: Visual Topology Pipeline -->
+    <g transform="translate(24, 338)">
+      <rect width="528" height="114" rx="10" fill="#15161e" stroke="#252735" stroke-width="1"/>
+
+      <!-- Header Label -->
+      <text x="18" y="24" class="font-mono" font-size="10" font-weight="600" fill="#9ca3af" letter-spacing="0.5">ROUTING TOPOLOGY FLOW</text>
+
+      <!-- Node 1: Exchange -->
+      <g transform="translate(18, 42)">
+        <rect width="134" height="52" rx="8" fill="#1f212c" stroke="#ea6a28" stroke-width="1.3" stroke-opacity="0.85"/>
+        <text x="12" y="22" class="font-mono" font-size="10" font-weight="700" fill="#ea6a28">TOPIC EXCHANGE</text>
+        <text x="12" y="38" class="font-mono" font-size="9.5" fill="#a1a1aa">events.orders</text>
+      </g>
+
+      <!-- Connection Edge 1 -->
+      <path d="M 152 68 L 194 68" fill="none" stroke="#ea6a28" stroke-width="1.5" stroke-dasharray="3,3"/>
+      <circle cx="173" cy="68" r="3" fill="#ea6a28"/>
+
+      <!-- Node 2: Quorum Queue -->
+      <g transform="translate(194, 42)">
+        <rect width="144" height="52" rx="8" fill="#1f212c" stroke="#22c55e" stroke-width="1.3" stroke-opacity="0.85"/>
+        <text x="12" y="22" class="font-mono" font-size="10" font-weight="700" fill="#22c55e">QUORUM QUEUE</text>
+        <text x="12" y="38" class="font-mono" font-size="9.5" fill="#a1a1aa">orders.processing</text>
+      </g>
+
+      <!-- Connection Edge 2 -->
+      <path d="M 338 68 L 380 68" fill="none" stroke="#22c55e" stroke-width="1.5" stroke-dasharray="3,3"/>
+      <circle cx="359" cy="68" r="3" fill="#22c55e"/>
+
+      <!-- Node 3: Active Consumer -->
+      <g transform="translate(380, 42)">
+        <rect width="130" height="52" rx="8" fill="#1f212c" stroke="#3b82f6" stroke-width="1.3" stroke-opacity="0.85"/>
+        <text x="12" y="22" class="font-mono" font-size="10" font-weight="700" fill="#60a5fa">CONSUMER (1)</text>
+        <text x="12" y="38" class="font-mono" font-size="9.5" fill="#a1a1aa">worker-node-04</text>
+      </g>
+    </g>
+  </g>
+</svg>

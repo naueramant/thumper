@@ -34,11 +34,19 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: true
-        runAsUser: 101
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
       containers:
         - name: thumper
           image: your-registry/thumper:latest
           imagePullPolicy: IfNotPresent
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           ports:
             - containerPort: 8080
               name: http
@@ -46,6 +54,9 @@ spec:
             # Internal service URL of your RabbitMQ instance
             - name: RABBITMQ_URL
               value: "http://rabbitmq.rabbitmq.svc.cluster.local:15672"
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
           resources:
             requests:
               cpu: 50m
@@ -65,6 +76,9 @@ spec:
               port: http
             initialDelaySeconds: 2
             periodSeconds: 10
+      volumes:
+        - name: tmp
+          emptyDir: {}
 ```
 
 ### Service & Ingress
